@@ -119,9 +119,6 @@ def analyze():
 
         # if _r['lava_notif'] != []:
         #     atk += 1
-        
-   
-    
 
         for bid in _r['bugs']:
             if bid == -11:
