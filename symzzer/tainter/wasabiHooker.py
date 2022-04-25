@@ -6,6 +6,18 @@ import collections
 
 class Wasabi(object):
     def __init__(self, inputTp, inputJson, libf, actFuncID):
+        # self.Location_t = collections.namedtuple('Location', ['func', 'instr'])
+
+        # self.module = collections.namedtuple('module', ['info'])({})
+        # with('...wasabi.js', 'r') as f:
+        #     _pattern = "Wasabi.module.info ="
+        #     for line in f.readlines():
+        #         if line.startswith() == _pattern:
+        #             self.module.info = json.loads(line[len(_pattern):])
+        #             break
+        # if  self.module.info not:
+        #     raise RuntimeError("Cannot prase wasabi hooker")
+        # self.info = {"functions":[{"type":"|i","import":["env","action_data_size"],"export":[],"locals":"","instrCount":0},{"type":"ii|i","import":["env","read_action_data"],"export":[],"locals":"","instrCount":0},{"type":"ii|","import":["env","eosio_assert"],"export":[],"locals":"","instrCount":0},{"type":"i|","import":["env","prints"],"export":[],"locals":"","instrCount":0},{"type":"iii|i","import":["env","memcpy"],"export":[],"locals":"","instrCount":0},{"type":"I|","import":["env","printn"],"export":[],"locals":"","instrCount":0},{"type":"ii|","import":["env","send_inline"],"export":[],"locals":"","instrCount":0},{"type":"I|","import":["env","printi"],"export":[],"locals":"","instrCount":0},{"type":"ii|","import":["env","prints_l"],"export":[],"locals":"","instrCount":0},{"type":"I|","import":["env","printui"],"export":[],"locals":"","instrCount":0},{"type":"|","import":["env","abort"],"export":[],"locals":"","instrCount":0},{"type":"iii|i","import":["env","memset"],"export":[],"locals":"","instrCount":0},{"type":"iii|i","import":["env","memmove"],"export":[],"locals":"","instrCount":0},{"type":"IIII|i","import":["env","__unordtf2"],"export":[],"locals":"","instrCount":0},{"type":"IIII|i","import":["env","__eqtf2"],"export":[],"locals":"","instrCount":0},{"type":"iIIII|","import":["env","__multf3"],"export":[],"locals":"","instrCount":0},{"type":"iIIII|","import":["env","__addtf3"],"export":[],"locals":"","instrCount":0},{"type":"iIIII|","import":["env","__subtf3"],"export":[],"locals":"","instrCount":0},{"type":"IIII|i","import":["env","__netf2"],"export":[],"locals":"","instrCount":0},{"type":"II|i","import":["env","__fixunstfsi"],"export":[],"locals":"","instrCount":0},{"type":"ii|","import":["env","__floatunsitf"],"export":[],"locals":"","instrCount":0},{"type":"II|i","import":["env","__fixtfsi"],"export":[],"locals":"","instrCount":0},{"type":"ii|","import":["env","__floatsitf"],"export":[],"locals":"","instrCount":0},{"type":"iF|","import":["env","__extenddftf2"],"export":[],"locals":"","instrCount":0},{"type":"if|","import":["env","__extendsftf2"],"export":[],"locals":"","instrCount":0},{"type":"iIIII|","import":["env","__divtf3"],"export":[],"locals":"","instrCount":0},{"type":"IIII|i","import":["env","__letf2"],"export":[],"locals":"","instrCount":0},{"type":"II|F","import":["env","__trunctfdf2"],"export":[],"locals":"","instrCount":0},{"type":"IIII|i","import":["env","__getf2"],"export":[],"locals":"","instrCount":0},{"type":"II|f","import":["env","__trunctfsf2"],"export":[],"locals":"","instrCount":0},{"type":"ii|","import":["env","set_blockchain_parameters_packed"],"export":[],"locals":"","instrCount":0},{"type":"ii|i","import":["env","get_blockchain_parameters_packed"],"export":[],"locals":"","instrCount":0},{"type":"|","import":null,"export":[],"locals":"","instrCount":1},{"type":"III|","import":null,"export":["apply"],"locals":"iIIiIiI","instrCount":301},{"type":"iIIii|","import":null,"export":[],"locals":"","instrCount":5},{"type":"ii|i","import":null,"export":[],"locals":"iiiiII","instrCount":225},{"type":"iIi|","import":null,"export":[],"locals":"","instrCount":11},{"type":"ii|i","import":null,"export":[],"locals":"iiiiiiIiIi","instrCount":289},{"type":"iIIIiii|","import":null,"export":[],"locals":"iIIiII","instrCount":443},{"type":"ii|i","import":null,"export":[],"locals":"iiiiIiI","instrCount":229},{"type":"ii|","import":null,"export":[],"locals":"ii","instrCount":110},{"type":"ii|","import":null,"export":[],"locals":"iiIIii","instrCount":153},{"type":"i|","import":null,"export":[],"locals":"iiIiIIiiiII","instrCount":120},{"type":"ii|","import":null,"export":[],"locals":"ii","instrCount":160},{"type":"ii|","import":null,"export":[],"locals":"iiIIIiii","instrCount":161},{"type":"ii|","import":null,"export":[],"locals":"iiiiii","instrCount":167},{"type":"ii|","import":null,"export":[],"locals":"ii","instrCount":110},{"type":"ii|","import":null,"export":[],"locals":"iiiiiiI","instrCount":166},{"type":"ii|","import":null,"export":[],"locals":"iI","instrCount":141},{"type":"ii|i","import":null,"export":[],"locals":"iiIiiii","instrCount":132},{"type":"ii|i","import":null,"export":[],"locals":"iIiiii","instrCount":147},{"type":"ii|i","import":null,"export":[],"locals":"iIiiiii","instrCount":107},{"type":"ii|i","import":null,"export":[],"locals":"iiiiii","instrCount":208},{"type":"ii|i","import":null,"export":[],"locals":"iiIiii","instrCount":132},{"type":"i|i","import":null,"export":["_Znwj"],"locals":"ii","instrCount":28},{"type":"i|i","import":null,"export":["_Znaj"],"locals":"","instrCount":3},{"type":"i|","import":null,"export":["_ZdlPv"],"locals":"","instrCount":8},{"type":"i|","import":null,"export":["_ZdaPv"],"locals":"","instrCount":3},{"type":"i|","import":null,"export":[],"locals":"","instrCount":3},{"type":"ii|i","import":null,"export":[],"locals":"iii","instrCount":99},{"type":"ii|","import":null,"export":[],"locals":"iiiiiii","instrCount":203},{"type":"i|","import":null,"export":[],"locals":"","instrCount":3},{"type":"i|","import":null,"export":[],"locals":"","instrCount":1},{"type":"i|i","import":null,"export":[],"locals":"","instrCount":4},{"type":"ii|i","import":null,"export":[],"locals":"iiiiiiiiiiii","instrCount":290},{"type":"i|i","import":null,"export":[],"locals":"iiiiiiii","instrCount":322},{"type":"i|","import":null,"export":[],"locals":"iii","instrCount":63}],"globals":"iii","start":null,"tableExportName":"__wasabi_table","brTables":[]}
 
         self.analysis = Analysis(inputTp, inputJson, libf, actFuncID)
         self.initHooker()
@@ -38,9 +50,20 @@ class Wasabi(object):
         }
 
     def lowlevelHooks(self, opcode, args):
+        # print('--- ', opcode, opcodeToType[opcode], args)
+        # lambda opcode, args: self.defaultHooks[opcodeToType[opcode]](*args)
+        # print("OP", opcode, args)
+        # print(args)
+        # print([type(a) for a in args])
+        # location = Location_t(*args[:3])
+        # args = [location] + args[3:]
+        # self.defaultHooks[opcodeToType[opcode]](*args)
+
         try:
+            # print("???",args)
             location = Location_t(*args[:3])
             args = [location] + args[3:]
+            # print(opcode, args)
             self.defaultHooks[opcodeToType[opcode]](*args)
         except Exception as e:
             print(e)

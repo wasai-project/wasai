@@ -225,3 +225,151 @@ opcodeToType = {
        "end_if":END,  # 1
        "end_else":END  # 1
 }
+
+
+'''
+        def i32sub_Hook(args):
+            func, instr, input0, input1, result0 = args
+            self.analysis.binary(Location_t(func, instr), "i32.sub", input0, input1, result0) 
+        
+        def beginfunction_Hook(args):
+            func, instr = args
+            self.analysis.begin(Location_t(func, instr), "function")
+
+        def endfunction_Hook(args):
+            func, instr = args
+            self.analysis.end(Location_t(func, instr), "function", Location_t(func, -1)) 
+
+        def return_Hook(args):
+            func, instr = args
+            self.analysis.return_(Location_t(func, instr), [])
+
+        def i32const_Hook (args):
+            func, instr, value = args
+            self.analysis.const_(Location_t(func, instr), "i32.const", value) 
+
+        def localtee_Hook(args):
+            # print(args)
+            func, instr, index, value = args[:4]
+            self.analysis.local(Location_t(func, instr), "local.tee", index, value) 
+
+        def beginblock_Hook(args ):
+            func, instr = args
+            self.analysis.begin(Location_t(func, instr), "block") 
+
+        def globalset_Hook(args ):
+            func, instr, index, value = args
+            self.analysis.globalh(Location_t(func, instr), "global.set", index, value) 
+        def i32ne_Hook(args):
+            func, instr, input0, input1, result0 = args
+            self.analysis.binary(Location_t(func, instr), "i32.ne", input0, input1, result0)
+
+        def globalget_Hook(_args):
+            func, instr, index, value = _args
+            self.analysis.globalh(Location_t(func, instr), "global.get", index, value)
+        def callindirect_Hook (_args):
+            func, instr, tableIndex = _args[:3]
+            args = _args[3:]
+            # print('callindirect:',args)
+            #targetfunc= Wasabi.resolveTableIdx(tableIndex)
+            self.analysis.call_pre(Location_t(func, instr), [], args, tableIndex)
+
+        def localget_Hook(_args):
+            func, instr, index, value = _args
+            self.analysis.local(Location_t(func, instr), "local.get", index, value)
+        def  brif_Hook(_args):
+            func, instr, condition, targetLabel, targetInstr = _args
+            self.analysis.br_if(Location_t(func, instr), [], condition == 1)
+        
+        def endblock_Hook(_args):
+            func, instr, beginInstr = _args
+            self.analysis.end(Location_t(func, instr), "block", [])
+
+        def i32add_Hook (_args):
+            func, instr, input0, input1, result0 = _args
+            self.analysis.binary(Location_t(func, instr), "i32.add", input0, input1, result0)
+            
+
+self.AlowlevelHooks = {
+       "br_if":brif_Hook,
+       "begin_block":  beginblock_Hook,
+       "end_block":endblock_Hook,
+       "call_indirect": callindirect_Hook,
+       "begin_function": beginfunction_Hook,
+       "end_function": endfunction_Hook,
+       "return":  return_Hook,
+
+       "local.get": localget_Hook,
+       "local.tee":  localtee_Hook,
+       "global.set":  globalset_Hook,
+       "global.get": globalget_Hook,
+
+       "i32.const":  i32const_Hook,
+       "i32.sub":  i32sub_Hook,
+       "i32.ne":  i32ne_Hook,
+       "i32.add": i32add_Hook,
+}
+'''
+
+'''
+wasm = Wasm()
+instr = 'i32.add'
+wasm._group[wasm.reverse_table[instr]]
+def group():
+""" Instruction classification per group """
+last_class = _groups.get(0)
+for k, v in _groups.items():
+       if self.opcode >= k:
+       last_class = v
+       else:
+       return last_class
+return last_class
+
+if group(opcode) == 'Arithmetic_i32':
+if xx[2] == 2：
+       binary
+elif xx[2] == 1:
+       unary
+else:
+       raise Exception("fail select hokker")
+
+for key, item in opcodes._table.items():
+if 0x45 <= key  <0xa7:
+       if item[2] == 2:
+
+
+
+_groups = {
+0x00: UNREACHABLE,
+0x01: NOP,
+0x02: ('block', BlockImm(), 0, 0, 'begin a sequence of expressions'),
+0x03: ('loop', BlockImm(), 0, 0, 'begin a block which can also form control flow loops'),
+0x04: ('if', BlockImm(), 1, 0, 'begin if expression'),
+0x05: ('else', None, 0, 0, 'begin else expression of if'),
+0x0b: ('end', None, 0, 0, 'end a block, loop, or if'),
+0x0c: ('br', BranchImm(), 0, 0, 'break that targets an outer nested block'),
+0x0d: ('br_if', BranchImm(), 1, 0, 'conditional break that targets an outer nested block'),
+0x0e: ('br_table', BranchTableImm(), 1, 0, 'branch table control flow construct'),
+0x0f: ('return', None, 1, 0, 'return zero or one value from this function'),
+0x10: ('call', CallImm(), 0, 0, 'call a function by its index'),
+0x11: ('call_indirect', CallIndirectImm(), 1, 0, 'call a function indirect with an expected signature'),
+
+0x1A: 'Parametric',
+0x20: 'Variable',
+0x28: 'Memory',
+0x41: 'Constant',
+0x45: 'Logical_i32',
+0x50: 'Logical_i64',
+0x5b: 'Logical_f32',
+0x61: 'Logical_f64',
+0x67: 'Arithmetic_i32',
+0x71: 'Bitwise_i32',
+0x79: 'Arithmetic_i64',
+0x83: 'Bitwise_i64',
+0x8b: 'Arithmetic_f32',
+0x99: 'Arithmetic_f64',
+0xa7: 'Conversion'
+}
+
+'''
+

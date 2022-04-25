@@ -1,5 +1,6 @@
 import z3
 
+
 class SymbolMemory:
     def __init__(self):
         self.z3Array = z3.Array("memory", z3.BitVecSort(32), z3.BitVecSort(8))#32, 32#
@@ -12,6 +13,7 @@ class SymbolMemory:
         for i in range(addr, addr + l):
             if i not in self.written:
                 self.written.add(i)
+                #shr = z3.BitVecVal(value >> ((i - addr) << 3), 8)
                 shr = z3.simplify(z3.Extract(7, 0, value >> ((i - addr) << 3)))
                 self.z3Array = z3.simplify(z3.Store(self.z3Array, i, shr))
 
@@ -21,6 +23,7 @@ class SymbolMemory:
         if (addrVal, l2) in self.qmem:
             return self.qmem[(addrVal, l2)]
 
+        #################### FOR VECTOR ##########################
         if 'pointer' in str(z3Addr):
             if tp1 == 'I':
                 self.store(z3.BitVecVal(addrVal, 32), addrVal, tp1, l1, l1, z3.BitVec("vector_" + argName, l1 * 8))
@@ -30,7 +33,7 @@ class SymbolMemory:
                 else:
                     self.store(z3.BitVecVal(addrVal, 32), addrVal, tp1, l1, l1, z3.FP("vector_" + argName, z3.Float64()))
             self.load(z3.BitVecVal(addrVal, 32), addrVal, tp1, l1, tp2, l2, value)
-
+        #################### FOR VECTOR ##########################
         if tp1 == "F":
             value = z3.simplify(z3.fpToIEEEBV(value))
         self.prefill(addrVal, l1, value)
@@ -56,6 +59,7 @@ class SymbolMemory:
         # =============== cache ====================
         drops = list()
         for (_addr, _offset), _val in self.qmem.items():
+            # A的左界<=B的右界 && B的左界<=A的右界，那么二者相交
             if max(_addr, addrVal) < min(_addr+_offset, addrVal+l2):
                 # overlap
                 drops.append((_addr, _offset))

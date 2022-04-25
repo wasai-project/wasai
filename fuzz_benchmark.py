@@ -39,8 +39,8 @@ def run():
     # exit(0)
     # tmps = os.listdir("/devdata/cwmdata/symzzerDataset/rq2/res/vul_notif/")
     for contractDir in contractsList:
-        # if contractDir != "zlkggamerobs":
-        #     continue
+        if contractDir != "frogkingking":
+            continue
 
         '''
         efxstakepool
@@ -70,8 +70,8 @@ def run():
             # print(wasmPath, abiPath)
 
             # cmd = f'python -m bin.fuzz {wasmPath} {abiPath} NULL 500000 300 {fuzzTarget} --detect_vuls 200000 --nostdout' # OOB
-            cmd = f'python -m bin.fuzz {wasmPath} {abiPath} {contractName} 30000 300 {fuzzTarget} --detect_vuls 002000' #FAKE NOTIF
-            # cmd = f'python -m bin.fuzz {wasmPath} {abiPath} {contractName} 300 300 {fuzzTarget} --detect_vuls 020000 --nostdout'   #FAKE EOS
+            # cmd = f'python -m bin.fuzz {wasmPath} {abiPath} {contractName} 30000 300 {fuzzTarget} --detect_vuls 002000' #FAKE NOTIF
+            cmd = f'python -m bin.fuzz {wasmPath} {abiPath} {contractName} 300 300 {fuzzTarget} --detect_vuls 020000'   #FAKE EOS
             # cmd = f'python -m bin.fuzz {wasmPath} {abiPath} {contractName} -1 120 {fuzzTarget} --detect_vuls 011100 --inject --nostdout'   # 
             # cmd = f'python -m bin.fuzz {wasmPath} {abiPath} {contractName} 30000 300 {fuzzTarget} --detect_vuls 000200'   #PM
             # cmd = f'python -m bin.fuzz {wasmPath} {abiPath} {contractName} 500000000 300 {fuzzTarget} --detect_vuls 000000 --nostdout'   # coverage
@@ -119,6 +119,9 @@ def analyze():
 
         # if _r['lava_notif'] != []:
         #     atk += 1
+        
+   
+    
 
         for bid in _r['bugs']:
             if bid == -11:

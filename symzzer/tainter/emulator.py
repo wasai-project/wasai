@@ -83,13 +83,20 @@ def intUnary(instrName, arg1):
         raise Exception("No need to handel")
 
     # ==================== bitwise ==========================
-
+    # None
     # ==================== logical =============================
+    # elif instrName == 'eqz':
+    #     # assert arg0.size() == 32, f"in eqz the argument popped size is {arg1.size()} instead of 32"
+    #     result = simplify(arg1 == 0)
+    #     if is_bool(result):
+    #         raise Exception("No need to handel")
+    #     return result
+    ################################################ CHNAGED BY SZH####################################
     elif instrName == 'eqz':
         # assert arg0.size() == 32, f"in eqz the argument popped size is {arg1.size()} instead of 32"
         result = simplify(If(arg1 == 0, BitVecVal(1, 32), BitVecVal(0, 32)))
         return result
-
+    ################################################ CHNAGED BY SZH####################################
     else:
         raise Exception(
             'Instruction:', instrName, 'not match in int unary function')

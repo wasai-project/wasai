@@ -1,0 +1,473 @@
+from .analysis import Analysis
+import collections
+
+class Wasabi(object):
+    def __init__(self):
+        
+        self.module = collections.namedtuple('module', ['info'])({})
+        with('...wasabi.js', 'r') as f:
+            _pattern = "Wasabi.module.info ="
+            for line in f.readlines():
+                if line.startswith() == _pattern:
+                    self.module.info = json.loads(line[len(_pattern):])
+                    break
+        if  self.module.info not:
+            raise RuntimeError("Cannot prase wasabi hooker")
+        
+        self.analysis = Analysis()
+        wasabitp = collections.namedtuple('wasabitp', ['func', 'instr'])
+
+'''
+
+log格式  instruction_name [func_id, instr, arg1, agr2...] [type1,type2...]
+func_id表示指令所在的函数（原wasm）instr表示从函数开始第几条指令（从0开始，begin_function等表示块开始和结束的，instr为-1）
+arg表示指令从栈上取出的参数和压入栈中的结果，若类型为I64，单个拆分成两个，若为[arg1, arg2]，原I64表示为(arg2<<32) | arg1
+type表示指令可以作用于多种数据类型时，作为参数的数据的具体类型
+'''     
+
+        self.module.lowlevelHooks = {
+            "begin_function": 
+                self.analysis.begin({'func':func, 'instr':instr}, "function")
+            ,
+            "return": 
+                self.analysis.return_({'func':func, 'instr':instr}, [])
+            ,
+            "end_function":
+                self.analysis.end({'func':func, 'instr':instr}, "function", {func, instr: -1}) 
+            ,
+            "local.get_i": 
+                self.analysis.local({'func':func, 'instr':instr}, "local.get", index, value) 
+            ,
+            "global.get_i": 
+                self.analysis.global({'func':func, 'instr':instr}, "global.get", index, value) 
+            ,
+            "begin_block": function (func, instr, ) {
+                self.analysis.begin({'func':func, 'instr':instr}, "block") 
+            ,
+            "i32.const": function (func, instr, value) {
+                self.analysis.const_({'func':func, 'instr':instr}, "i32.const", value) 
+            ,
+            "call_i": function (func, instr, targetFunc, arg0) {
+                self.analysis.call_pre({'func':func, 'instr':instr}, targetFunc, [arg0]) 
+            ,
+            "call_post": function (func, instr, ) {
+                self.analysis.call_post({'func':func, 'instr':instr}, []) 
+            ,
+            "i32.sub": function (func, instr, input0, input1, result0) {
+                self.analysis.binary({'func':func, 'instr':instr}, "i32.sub", input0, input1, result0) 
+            ,
+            "local.tee_i": 
+                self.analysis.local({'func':func, 'instr':instr}, "local.tee", index, value) 
+            ,
+            "i32.load": function (func, instr, offset, align, addr, value) {
+                self.analysis.load({'func':func, 'instr':instr}, "i32.load", {addr, offset, align}, value) 
+            ,
+            "global.set_i": 
+                self.analysis.global({'func':func, 'instr':instr}, "global.set", index, value) 
+            ,
+            "i32.eq": function (func, instr, input0, input1, result0) {
+                self.analysis.binary({'func':func, 'instr':instr}, "i32.eq", input0, input1, result0) 
+            ,
+            "call_ii": function (func, instr, targetFunc, arg0, arg1) {
+                self.analysis.call_pre({'func':func, 'instr':instr}, targetFunc, [arg0, arg1]) 
+            ,
+            "i32.add": function (func, instr, input0, input1, result0) {
+                self.analysis.binary({'func':func, 'instr':instr}, "i32.add", input0, input1, result0) 
+            ,
+            "i32.shr_s": function (func, instr, input0, input1, result0) {
+                self.analysis.binary({'func':func, 'instr':instr}, "i32.shr_s", input0, input1, result0) 
+            ,
+            "local.set_i": 
+                self.analysis.local({'func':func, 'instr':instr}, "local.set", index, value) 
+            ,
+            "i64.load": function (func, instr, offset, align, addr, value_low, value_high) {
+                self.analysis.load({'func':func, 'instr':instr}, "i64.load", {addr, offset, align}, (value_high<<32) | value_low) 
+            ,
+            "i32.ge_u": function (func, instr, input0, input1, result0) {
+                self.analysis.binary({'func':func, 'instr':instr}, "i32.ge_u", input0, input1, result0) 
+            ,
+            "call": function (func, instr, targetFunc) {
+                self.analysis.call_pre({'func':func, 'instr':instr}, targetFunc, []) 
+            ,
+            "br_if": function (func, instr, condition, targetLabel, targetInstr) {
+                self.analysis.br_if({'func':func, 'instr':instr}, {label: targetLabel, location: {func, instr: targetInstr}}, condition === 1) 
+            ,
+            "end_block": function (func, instr, beginInstr) {
+                self.analysis.end({'func':func, 'instr':instr}, "block", {func, instr: beginInstr}) 
+            ,
+            "call_post_I": function (func, instr, result0_low, result0_high) {
+                self.analysis.call_post({'func':func, 'instr':instr}, [(result0_high<<32) | result0_low]) 
+            ,
+            "call_post_i": function (func, instr, result0) {
+                self.analysis.call_post({'func':func, 'instr':instr}, [result0]) 
+            ,
+            "i64.eq": function (func, instr, input0_low, input0_high, input1_low, input1_high, result0) {
+                self.analysis.binary({'func':func, 'instr':instr}, "i64.eq", (input0_high<<32) | input0_low, (input1_high<<32) | input1_low, result0) 
+            ,
+            "i64.store": function (func, instr, offset, align, addr, value_low, value_high) {
+                self.analysis.store({'func':func, 'instr':instr}, "i64.store", {addr, offset, align}, (value_high<<32) | value_low) 
+            ,
+            "call_iii": function (func, instr, targetFunc, arg0, arg1, arg2) {
+                self.analysis.call_pre({'func':func, 'instr':instr}, targetFunc, [arg0, arg1, arg2]) 
+            ,
+            "i32.lt_u": function (func, instr, input0, input1, result0) {
+                self.analysis.binary({'func':func, 'instr':instr}, "i32.lt_u", input0, input1, result0) 
+            ,
+            "local.get_I": function (func, instr, index, value_low, value_high) {
+                self.analysis.local({'func':func, 'instr':instr}, "local.get", index, (value_high<<32) | value_low) 
+            ,
+            "local.set_I": function (func, instr, index, value_low, value_high) {
+                self.analysis.local({'func':func, 'instr':instr}, "local.set", index, (value_high<<32) | value_low) 
+            ,
+            "i32.div_s": function (func, instr, input0, input1, result0) {
+                self.analysis.binary({'func':func, 'instr':instr}, "i32.div_s", input0, input1, result0) 
+            ,
+            "begin_loop": function (func, instr, ) {
+                self.analysis.begin({'func':func, 'instr':instr}, "loop") 
+            ,
+            "i64.ne": function (func, instr, input0_low, input0_high, input1_low, input1_high, result0) {
+                self.analysis.binary({'func':func, 'instr':instr}, "i64.ne", (input0_high<<32) | input0_low, (input1_high<<32) | input1_low, result0) 
+            ,
+            "br": function (func, instr, targetLabel, targetInstr) {
+                self.analysis.br({'func':func, 'instr':instr}, {label: targetLabel, location: {func, instr: targetInstr}}) 
+            ,
+            "i32.gt_u": function (func, instr, input0, input1, result0) {
+                self.analysis.binary({'func':func, 'instr':instr}, "i32.gt_u", input0, input1, result0) 
+            ,
+            "i32.store": function (func, instr, offset, align, addr, value) {
+                self.analysis.store({'func':func, 'instr':instr}, "i32.store", {addr, offset, align}, value) 
+            ,
+            "select_ii": function (func, instr, condition, input0, input1) {
+                self.analysis.select({'func':func, 'instr':instr}, condition === 1, input0, input1) 
+            ,
+            "i64.extend_i32_u": function (func, instr, input0, result0_low, result0_high) {
+                self.analysis.unary({'func':func, 'instr':instr}, "i64.extend_i32_u", input0, (result0_high<<32) | result0_low) 
+            ,
+            "i64.const": function (func, instr, value_low, value_high) {
+                self.analysis.const_({'func':func, 'instr':instr}, "i64.const", (value_high<<32) | value_low) 
+            ,
+            "i32.and": function (func, instr, input0, input1, result0) {
+                self.analysis.binary({'func':func, 'instr':instr}, "i32.and", input0, input1, result0) 
+            ,
+            "i32.eqz": function (func, instr, input0, result0) {
+                self.analysis.unary({'func':func, 'instr':instr}, "i32.eqz", input0, result0) 
+            ,
+            "i32.wrap_i64": function (func, instr, input0_low, input0_high, result0) {
+                self.analysis.unary({'func':func, 'instr':instr}, "i32.wrap_i64", (input0_high<<32) | input0_low, result0) 
+            ,
+            "drop_i": function (func, instr, value) {
+                self.analysis.drop({'func':func, 'instr':instr}, value) 
+            ,
+            "i64.shr_u": function (func, instr, input0_low, input0_high, input1_low, input1_high, result0_low, result0_high) {
+                self.analysis.binary({'func':func, 'instr':instr}, "i64.shr_u", (input0_high<<32) | input0_low, (input1_high<<32) | input1_low, (result0_high<<32) | result0_low) 
+            ,
+            "local.tee_I": function (func, instr, index, value_low, value_high) {
+                self.analysis.local({'func':func, 'instr':instr}, "local.tee", index, (value_high<<32) | value_low) 
+            ,
+            "end_loop": function (func, instr, beginInstr) {
+                self.analysis.end({'func':func, 'instr':instr}, "loop", {func, instr: beginInstr}) 
+            ,
+            "i32.load8_u": function (func, instr, offset, align, addr, value) {
+                self.analysis.load({'func':func, 'instr':instr}, "i32.load8_u", {addr, offset, align}, value) 
+            ,
+            "i32.shl": function (func, instr, input0, input1, result0) {
+                self.analysis.binary({'func':func, 'instr':instr}, "i32.shl", input0, input1, result0) 
+            ,
+            "call_indirect": function (func, instr, tableIndex) {
+                self.analysis.call_pre({'func':func, 'instr':instr}, self.resolveTableIdx(tableIndex), [], tableIndex) 
+            ,
+            "i64.le_s": function (func, instr, input0_low, input0_high, input1_low, input1_high, result0) {
+                self.analysis.binary({'func':func, 'instr':instr}, "i64.le_s", (input0_high<<32) | input0_low, (input1_high<<32) | input1_low, result0) 
+            ,
+            "i32.ne": function (func, instr, input0, input1, result0) {
+                self.analysis.binary({'func':func, 'instr':instr}, "i32.ne", input0, input1, result0) 
+            ,
+            "i32.or": function (func, instr, input0, input1, result0) {
+                self.analysis.binary({'func':func, 'instr':instr}, "i32.or", input0, input1, result0) 
+            ,
+            "i32.store8": function (func, instr, offset, align, addr, value) {
+                self.analysis.store({'func':func, 'instr':instr}, "i32.store8", {addr, offset, align}, value) 
+            ,
+            "i32.gt_s": function (func, instr, input0, input1, result0) {
+                self.analysis.binary({'func':func, 'instr':instr}, "i32.gt_s", input0, input1, result0) 
+            ,
+            "i32.mul": function (func, instr, input0, input1, result0) {
+                self.analysis.binary({'func':func, 'instr':instr}, "i32.mul", input0, input1, result0) 
+            ,
+            "return_i": function (func, instr, result0) {
+                self.analysis.return_({'func':func, 'instr':instr}, [result0]) 
+            ,
+            "i64.eqz": function (func, instr, input0_low, input0_high, result0) {
+                self.analysis.unary({'func':func, 'instr':instr}, "i64.eqz", (input0_high<<32) | input0_low, result0) 
+            ,
+            "unreachable": function (func, instr, ) {
+                self.analysis.unreachable({'func':func, 'instr':instr}, ) 
+            ,
+            "i32.shr_u": function (func, instr, input0, input1, result0) {
+                self.analysis.binary({'func':func, 'instr':instr}, "i32.shr_u", input0, input1, result0) 
+            ,
+            "i32.xor": function (func, instr, input0, input1, result0) {
+                self.analysis.binary({'func':func, 'instr':instr}, "i32.xor", input0, input1, result0) 
+            ,
+            "call_iIii": function (func, instr, targetFunc, arg0, arg1_low, arg1_high, arg2, arg3) {
+                self.analysis.call_pre({'func':func, 'instr':instr}, targetFunc, [arg0, new Long(arg1_low, arg1_high), arg2, arg3]) 
+            ,
+            "i64.ge_u": function (func, instr, input0_low, input0_high, input1_low, input1_high, result0) {
+                self.analysis.binary({'func':func, 'instr':instr}, "i64.ge_u", (input0_high<<32) | input0_low, (input1_high<<32) | input1_low, result0) 
+            ,
+            "call_IIi": function (func, instr, targetFunc, arg0_low, arg0_high, arg1_low, arg1_high, arg2) {
+                self.analysis.call_pre({'func':func, 'instr':instr}, targetFunc, [new Long(arg0_low, arg0_high), new Long(arg1_low, arg1_high), arg2]) 
+            ,
+            "i64.lt_u": function (func, instr, input0_low, input0_high, input1_low, input1_high, result0) {
+                self.analysis.binary({'func':func, 'instr':instr}, "i64.lt_u", (input0_high<<32) | input0_low, (input1_high<<32) | input1_low, result0) 
+            ,
+            "i64.gt_s": function (func, instr, input0_low, input0_high, input1_low, input1_high, result0) {
+                self.analysis.binary({'func':func, 'instr':instr}, "i64.gt_s", (input0_high<<32) | input0_low, (input1_high<<32) | input1_low, result0) 
+            ,
+            "i64.add": function (func, instr, input0_low, input0_high, input1_low, input1_high, result0_low, result0_high) {
+                self.analysis.binary({'func':func, 'instr':instr}, "i64.add", (input0_high<<32) | input0_low, (input1_high<<32) | input1_low, (result0_high<<32) | result0_low) 
+            ,
+            "i64.gt_u": function (func, instr, input0_low, input0_high, input1_low, input1_high, result0) {
+                self.analysis.binary({'func':func, 'instr':instr}, "i64.gt_u", (input0_high<<32) | input0_low, (input1_high<<32) | input1_low, result0) 
+            ,
+            "select_II": function (func, instr, condition, input0_low, input0_high, input1_low, input1_high) {
+                self.analysis.select({'func':func, 'instr':instr}, condition === 1, (input0_high<<32) | input0_low, (input1_high<<32) | input1_low) 
+            ,
+            "i32.lt_s": function (func, instr, input0, input1, result0) {
+                self.analysis.binary({'func':func, 'instr':instr}, "i32.lt_s", input0, input1, result0) 
+            ,
+            "call_IIIIii": function (func, instr, targetFunc, arg0_low, arg0_high, arg1_low, arg1_high, arg2_low, arg2_high, arg3_low, arg3_high, arg4, arg5) {
+                self.analysis.call_pre({'func':func, 'instr':instr}, targetFunc, [new Long(arg0_low, arg0_high), new Long(arg1_low, arg1_high), new Long(arg2_low, arg2_high), new Long(arg3_low, arg3_high), arg4, arg5]) 
+            ,
+            "call_iiii": function (func, instr, targetFunc, arg0, arg1, arg2, arg3) {
+                self.analysis.call_pre({'func':func, 'instr':instr}, targetFunc, [arg0, arg1, arg2, arg3]) 
+            ,
+            "i32.le_u": function (func, instr, input0, input1, result0) {
+                self.analysis.binary({'func':func, 'instr':instr}, "i32.le_u", input0, input1, result0) 
+            ,
+            "call_IIII": function (func, instr, targetFunc, arg0_low, arg0_high, arg1_low, arg1_high, arg2_low, arg2_high, arg3_low, arg3_high) {
+                self.analysis.call_pre({'func':func, 'instr':instr}, targetFunc, [new Long(arg0_low, arg0_high), new Long(arg1_low, arg1_high), new Long(arg2_low, arg2_high), new Long(arg3_low, arg3_high)]) 
+            ,
+            "i64.shl": function (func, instr, input0_low, input0_high, input1_low, input1_high, result0_low, result0_high) {
+                self.analysis.binary({'func':func, 'instr':instr}, "i64.shl", (input0_high<<32) | input0_low, (input1_high<<32) | input1_low, (result0_high<<32) | result0_low) 
+            ,
+            "i32.ge_s": function (func, instr, input0, input1, result0) {
+                self.analysis.binary({'func':func, 'instr':instr}, "i32.ge_s", input0, input1, result0) 
+            ,
+            "i64.shr_s": function (func, instr, input0_low, input0_high, input1_low, input1_high, result0_low, result0_high) {
+                self.analysis.binary({'func':func, 'instr':instr}, "i64.shr_s", (input0_high<<32) | input0_low, (input1_high<<32) | input1_low, (result0_high<<32) | result0_low) 
+            ,
+            "i64.or": function (func, instr, input0_low, input0_high, input1_low, input1_high, result0_low, result0_high) {
+                self.analysis.binary({'func':func, 'instr':instr}, "i64.or", (input0_high<<32) | input0_low, (input1_high<<32) | input1_low, (result0_high<<32) | result0_low) 
+            ,
+            "i64.and": function (func, instr, input0_low, input0_high, input1_low, input1_high, result0_low, result0_high) {
+                self.analysis.binary({'func':func, 'instr':instr}, "i64.and", (input0_high<<32) | input0_low, (input1_high<<32) | input1_low, (result0_high<<32) | result0_low) 
+            ,
+            "call_iiIi": function (func, instr, targetFunc, arg0, arg1, arg2_low, arg2_high, arg3) {
+                self.analysis.call_pre({'func':func, 'instr':instr}, targetFunc, [arg0, arg1, new Long(arg2_low, arg2_high), arg3]) 
+            ,
+            "i64.mul": function (func, instr, input0_low, input0_high, input1_low, input1_high, result0_low, result0_high) {
+                self.analysis.binary({'func':func, 'instr':instr}, "i64.mul", (input0_high<<32) | input0_low, (input1_high<<32) | input1_low, (result0_high<<32) | result0_low) 
+            ,
+            "call_iiII": function (func, instr, targetFunc, arg0, arg1, arg2_low, arg2_high, arg3_low, arg3_high) {
+                self.analysis.call_pre({'func':func, 'instr':instr}, targetFunc, [arg0, arg1, new Long(arg2_low, arg2_high), new Long(arg3_low, arg3_high)]) 
+            ,
+            "call_iiiiiiii": function (func, instr, targetFunc, arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7) {
+                self.analysis.call_pre({'func':func, 'instr':instr}, targetFunc, [arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7]) 
+            ,
+            "i64.rem_s": function (func, instr, input0_low, input0_high, input1_low, input1_high, result0_low, result0_high) {
+                self.analysis.binary({'func':func, 'instr':instr}, "i64.rem_s", (input0_high<<32) | input0_low, (input1_high<<32) | input1_low, (result0_high<<32) | result0_low) 
+            ,
+            "i64.div_s": function (func, instr, input0_low, input0_high, input1_low, input1_high, result0_low, result0_high) {
+                self.analysis.binary({'func':func, 'instr':instr}, "i64.div_s", (input0_high<<32) | input0_low, (input1_high<<32) | input1_low, (result0_high<<32) | result0_low) 
+            ,
+            "i64.sub": function (func, instr, input0_low, input0_high, input1_low, input1_high, result0_low, result0_high) {
+                self.analysis.binary({'func':func, 'instr':instr}, "i64.sub", (input0_high<<32) | input0_low, (input1_high<<32) | input1_low, (result0_high<<32) | result0_low) 
+            ,
+            "call_I": function (func, instr, targetFunc, arg0_low, arg0_high) {
+                self.analysis.call_pre({'func':func, 'instr':instr}, targetFunc, [new Long(arg0_low, arg0_high)]) 
+            ,
+            "i64.store8": function (func, instr, offset, align, addr, value_low, value_high) {
+                self.analysis.store({'func':func, 'instr':instr}, "i64.store8", {addr, offset, align}, (value_high<<32) | value_low) 
+            ,
+            "i64.extend_i32_s": function (func, instr, input0, result0_low, result0_high) {
+                self.analysis.unary({'func':func, 'instr':instr}, "i64.extend_i32_s", input0, (result0_high<<32) | result0_low) 
+            ,
+            "br_table": function (func, instr, tableIdx, brTablesInfoIdx) {
+                self.analysis.br_table({'func':func, 'instr':instr}, self.module.info.brTables[brTablesInfoIdx].table, self.module.info.brTables[brTablesInfoIdx].default, tableIdx)  self.endBrTableBlocks(brTablesInfoIdx, tableIdx, func) 
+            ,
+            "i32.le_s": function (func, instr, input0, input1, result0) {
+                self.analysis.binary({'func':func, 'instr':instr}, "i32.le_s", input0, input1, result0) 
+            ,
+            "i64.lt_s": function (func, instr, input0_low, input0_high, input1_low, input1_high, result0) {
+                self.analysis.binary({'func':func, 'instr':instr}, "i64.lt_s", (input0_high<<32) | input0_low, (input1_high<<32) | input1_low, result0) 
+            ,
+            "i64.ge_s": function (func, instr, input0_low, input0_high, input1_low, input1_high, result0) {
+                self.analysis.binary({'func':func, 'instr':instr}, "i64.ge_s", (input0_high<<32) | input0_low, (input1_high<<32) | input1_low, result0) 
+            ,
+            "i64.div_u": function (func, instr, input0_low, input0_high, input1_low, input1_high, result0_low, result0_high) {
+                self.analysis.binary({'func':func, 'instr':instr}, "i64.div_u", (input0_high<<32) | input0_low, (input1_high<<32) | input1_low, (result0_high<<32) | result0_low) 
+            ,
+            "i64.xor": function (func, instr, input0_low, input0_high, input1_low, input1_high, result0_low, result0_high) {
+                self.analysis.binary({'func':func, 'instr':instr}, "i64.xor", (input0_high<<32) | input0_low, (input1_high<<32) | input1_low, (result0_high<<32) | result0_low) 
+            ,
+            "i64.rem_u": function (func, instr, input0_low, input0_high, input1_low, input1_high, result0_low, result0_high) {
+                self.analysis.binary({'func':func, 'instr':instr}, "i64.rem_u", (input0_high<<32) | input0_low, (input1_high<<32) | input1_low, (result0_high<<32) | result0_low) 
+            ,
+            "i64.rotl": function (func, instr, input0_low, input0_high, input1_low, input1_high, result0_low, result0_high) {
+                self.analysis.binary({'func':func, 'instr':instr}, "i64.rotl", (input0_high<<32) | input0_low, (input1_high<<32) | input1_low, (result0_high<<32) | result0_low) 
+            ,
+            "call_indirect_iII": function (func, instr, tableIndex, arg0, arg1_low, arg1_high, arg2_low, arg2_high) {
+                self.analysis.call_pre({'func':func, 'instr':instr}, self.resolveTableIdx(tableIndex), [arg0, new Long(arg1_low, arg1_high), new Long(arg2_low, arg2_high)], tableIndex) 
+            ,
+            "f64.convert_i64_s": function (func, instr, input0_low, input0_high, result0) {
+                self.analysis.unary({'func':func, 'instr':instr}, "f64.convert_i64_s", (input0_high<<32) | input0_low, result0) 
+            ,
+            "f64.const": function (func, instr, value) {
+                self.analysis.const_({'func':func, 'instr':instr}, "f64.const", value) 
+            ,
+            "f64.mul": function (func, instr, input0, input1, result0) {
+                self.analysis.binary({'func':func, 'instr':instr}, "f64.mul", input0, input1, result0) 
+            ,
+            "local.tee_F": 
+                self.analysis.local({'func':func, 'instr':instr}, "local.tee", index, value) 
+            ,
+            "f64.abs": function (func, instr, input0, result0) {
+                self.analysis.unary({'func':func, 'instr':instr}, "f64.abs", input0, result0) 
+            ,
+            "f64.lt": function (func, instr, input0, input1, result0) {
+                self.analysis.binary({'func':func, 'instr':instr}, "f64.lt", input0, input1, result0) 
+            ,
+            "local.get_F": 
+                self.analysis.local({'func':func, 'instr':instr}, "local.get", index, value) 
+            ,
+            "i64.trunc_f64_s": function (func, instr, input0, result0_low, result0_high) {
+                self.analysis.unary({'func':func, 'instr':instr}, "i64.trunc_f64_s", input0, (result0_high<<32) | result0_low) 
+            ,
+            "call_iiIIi": function (func, instr, targetFunc, arg0, arg1, arg2_low, arg2_high, arg3_low, arg3_high, arg4) {
+                self.analysis.call_pre({'func':func, 'instr':instr}, targetFunc, [arg0, arg1, new Long(arg2_low, arg2_high), new Long(arg3_low, arg3_high), arg4]) 
+            ,
+            "f64.convert_i64_u": function (func, instr, input0_low, input0_high, result0) {
+                self.analysis.unary({'func':func, 'instr':instr}, "f64.convert_i64_u", (input0_high<<32) | input0_low, result0) 
+            ,
+            "f64.ge": function (func, instr, input0, input1, result0) {
+                self.analysis.binary({'func':func, 'instr':instr}, "f64.ge", input0, input1, result0) 
+            ,
+            "i64.trunc_f64_u": function (func, instr, input0, result0_low, result0_high) {
+                self.analysis.unary({'func':func, 'instr':instr}, "i64.trunc_f64_u", input0, (result0_high<<32) | result0_low) 
+            ,
+            "call_iiiiiii": function (func, instr, targetFunc, arg0, arg1, arg2, arg3, arg4, arg5, arg6) {
+                self.analysis.call_pre({'func':func, 'instr':instr}, targetFunc, [arg0, arg1, arg2, arg3, arg4, arg5, arg6]) 
+            ,
+            "call_iII": function (func, instr, targetFunc, arg0, arg1_low, arg1_high, arg2_low, arg2_high) {
+                self.analysis.call_pre({'func':func, 'instr':instr}, targetFunc, [arg0, new Long(arg1_low, arg1_high), new Long(arg2_low, arg2_high)]) 
+            ,
+            "i32.store16": function (func, instr, offset, align, addr, value) {
+                self.analysis.store({'func':func, 'instr':instr}, "i32.store16", {addr, offset, align}, value) 
+            ,
+            "i32.rem_u": function (func, instr, input0, input1, result0) {
+                self.analysis.binary({'func':func, 'instr':instr}, "i32.rem_u", input0, input1, result0) 
+            ,
+            "i64.load8_u": function (func, instr, offset, align, addr, value_low, value_high) {
+                self.analysis.load({'func':func, 'instr':instr}, "i64.load8_u", {addr, offset, align}, (value_high<<32) | value_low) 
+            ,
+            "call_iIi": function (func, instr, targetFunc, arg0, arg1_low, arg1_high, arg2) {
+                self.analysis.call_pre({'func':func, 'instr':instr}, targetFunc, [arg0, new Long(arg1_low, arg1_high), arg2]) 
+            ,
+            "call_indirect_iIIi": function (func, instr, tableIndex, arg0, arg1_low, arg1_high, arg2_low, arg2_high, arg3) {
+                self.analysis.call_pre({'func':func, 'instr':instr}, self.resolveTableIdx(tableIndex), [arg0, new Long(arg1_low, arg1_high), new Long(arg2_low, arg2_high), arg3], tableIndex) 
+            ,
+            "call_iI": function (func, instr, targetFunc, arg0, arg1_low, arg1_high) {
+                self.analysis.call_pre({'func':func, 'instr':instr}, targetFunc, [arg0, new Long(arg1_low, arg1_high)]) 
+            ,
+            "f64.convert_i32_u": function (func, instr, input0, result0) {
+                self.analysis.unary({'func':func, 'instr':instr}, "f64.convert_i32_u", input0, result0) 
+            ,
+            "f64.div": function (func, instr, input0, input1, result0) {
+                self.analysis.binary({'func':func, 'instr':instr}, "f64.div", input0, input1, result0) 
+            ,
+            "local.set_F": 
+                self.analysis.local({'func':func, 'instr':instr}, "local.set", index, value) 
+            ,
+            "call_iIIiiI": function (func, instr, targetFunc, arg0, arg1_low, arg1_high, arg2_low, arg2_high, arg3, arg4, arg5_low, arg5_high) {
+                self.analysis.call_pre({'func':func, 'instr':instr}, targetFunc, [arg0, new Long(arg1_low, arg1_high), new Long(arg2_low, arg2_high), arg3, arg4, new Long(arg5_low, arg5_high)]) 
+            ,
+            "call_III": function (func, instr, targetFunc, arg0_low, arg0_high, arg1_low, arg1_high, arg2_low, arg2_high) {
+                self.analysis.call_pre({'func':func, 'instr':instr}, targetFunc, [new Long(arg0_low, arg0_high), new Long(arg1_low, arg1_high), new Long(arg2_low, arg2_high)]) 
+            ,
+            "call_iiiii": function (func, instr, targetFunc, arg0, arg1, arg2, arg3, arg4) {
+                self.analysis.call_pre({'func':func, 'instr':instr}, targetFunc, [arg0, arg1, arg2, arg3, arg4]) 
+            ,
+            "call_iIiiIi": function (func, instr, targetFunc, arg0, arg1_low, arg1_high, arg2, arg3, arg4_low, arg4_high, arg5) {
+                self.analysis.call_pre({'func':func, 'instr':instr}, targetFunc, [arg0, new Long(arg1_low, arg1_high), arg2, arg3, new Long(arg4_low, arg4_high), arg5]) 
+            ,
+            "call_indirect_iiii": function (func, instr, tableIndex, arg0, arg1, arg2, arg3) {
+                self.analysis.call_pre({'func':func, 'instr':instr}, self.resolveTableIdx(tableIndex), [arg0, arg1, arg2, arg3], tableIndex) 
+            ,
+            "i32.load8_s": function (func, instr, offset, align, addr, value) {
+                self.analysis.load({'func':func, 'instr':instr}, "i32.load8_s", {addr, offset, align}, value) 
+            ,
+            "f64.add": function (func, instr, input0, input1, result0) {
+                self.analysis.binary({'func':func, 'instr':instr}, "f64.add", input0, input1, result0) 
+            ,
+            "return_I": function (func, instr, result0_low, result0_high) {
+                self.analysis.return_({'func':func, 'instr':instr}, [(result0_high<<32) | result0_low]) 
+            ,
+            "call_indirect_iii": function (func, instr, tableIndex, arg0, arg1, arg2) {
+                self.analysis.call_pre({'func':func, 'instr':instr}, self.resolveTableIdx(tableIndex), [arg0, arg1, arg2], tableIndex) 
+            ,
+            "i32.rotl": function (func, instr, input0, input1, result0) {
+                self.analysis.binary({'func':func, 'instr':instr}, "i32.rotl", input0, input1, result0) 
+            ,
+            "f64.load": function (func, instr, offset, align, addr, value) {
+                self.analysis.load({'func':func, 'instr':instr}, "f64.load", {addr, offset, align}, value) 
+            ,
+            "f64.sub": function (func, instr, input0, input1, result0) {
+                self.analysis.binary({'func':func, 'instr':instr}, "f64.sub", input0, input1, result0) 
+            ,
+            "select_FF": function (func, instr, condition, input0, input1) {
+                self.analysis.select({'func':func, 'instr':instr}, condition === 1, input0, input1) 
+            ,
+            "memory.size": function (func, instr, currentSizePages) {
+                self.analysis.memory.size({'func':func, 'instr':instr}, currentSizePages) 
+            ,
+            "memory.grow": function (func, instr, deltaPages, previousSizePages) {
+                self.analysis.memory.grow({'func':func, 'instr':instr}, deltaPages, previousSizePages) 
+            ,
+            "i64.le_u": function (func, instr, input0_low, input0_high, input1_low, input1_high, result0) {
+                self.analysis.binary({'func':func, 'instr':instr}, "i64.le_u", (input0_high<<32) | input0_low, (input1_high<<32) | input1_low, result0) 
+            ,
+            "call_iiiI": function (func, instr, targetFunc, arg0, arg1, arg2, arg3_low, arg3_high) {
+                self.analysis.call_pre({'func':func, 'instr':instr}, targetFunc, [arg0, arg1, arg2, new Long(arg3_low, arg3_high)]) 
+            ,
+            "f64.convert_i32_s": function (func, instr, input0, result0) {
+                self.analysis.unary({'func':func, 'instr':instr}, "f64.convert_i32_s", input0, result0) 
+            ,
+            "call_iiiiiiiiiii": function (func, instr, targetFunc, arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10) {
+                self.analysis.call_pre({'func':func, 'instr':instr}, targetFunc, [arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10]) 
+            ,
+            "i32.div_u": function (func, instr, input0, input1, result0) {
+                self.analysis.binary({'func':func, 'instr':instr}, "i32.div_u", input0, input1, result0) 
+            ,
+            "f64.trunc": function (func, instr, input0, result0) {
+                self.analysis.unary({'func':func, 'instr':instr}, "f64.trunc", input0, result0) 
+            ,
+            "f64.gt": function (func, instr, input0, input1, result0) {
+                self.analysis.binary({'func':func, 'instr':instr}, "f64.gt", input0, input1, result0) 
+            ,
+            "i32.trunc_f64_u": function (func, instr, input0, result0) {
+                self.analysis.unary({'func':func, 'instr':instr}, "i32.trunc_f64_u", input0, result0) 
+            ,
+            "i32.trunc_f64_s": function (func, instr, input0, result0) {
+                self.analysis.unary({'func':func, 'instr':instr}, "i32.trunc_f64_s", input0, result0) 
+            ,
+            "f64.le": function (func, instr, input0, input1, result0) {
+                self.analysis.binary({'func':func, 'instr':instr}, "f64.le", input0, input1, result0) 
+            ,
+            "f64.ne": function (func, instr, input0, input1, result0) {
+                self.analysis.binary({'func':func, 'instr':instr}, "f64.ne", input0, input1, result0) 
+            ,
+            "f64.eq": function (func, instr, input0, input1, result0) {
+                self.analysis.binary({'func':func, 'instr':instr}, "f64.eq", input0, input1, result0) 
+            ,
+        }

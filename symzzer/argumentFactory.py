@@ -73,6 +73,7 @@ class ArgumentFactory(object):
         self.fakeTransferAgentName = setting.fakeTransferAgentName # A fake eosio.token
         self.fakeTransferUserName = setting.fakeTransferUserName               # An account invoke fake.token.transfer
 
+    
 
     def clear(self):
         """reset
@@ -82,6 +83,8 @@ class ArgumentFactory(object):
             None
         """
         self.testArgument = ""
+        # self.prexFunc = self.functionName
+        # self.functionName = ""
 
 
     def getActionType(self, actionName):
@@ -118,6 +121,21 @@ class ArgumentFactory(object):
         return {'name':'~', 'base':structName, 'fields':[]}
 
     def chooseFunc(self):
+        '''
+        lofter = random.choice([0,1])
+        if kind == 0 and lofter:
+            prexFc =  self.functionName
+            if prexFc in self.rdb:
+                rdbs = feedbackFactory.rdb[testDataFactory.functionName] # table
+                if rdbs != []:
+                    fs = []
+                    for rdb in rdbs:
+                        if rdb in feedbackFactory.dbFlow:
+                            fs.extend(feedbackFactory.dbFlow[rdb]['w'])
+                    if fs != []:
+                        _fc = random.choice(fs)
+
+        '''
         return random.choice(self.abi.actionNames) # deponding on db function
 
     def generateNewData(self, _funcName, kind):
@@ -131,6 +149,7 @@ class ArgumentFactory(object):
         self.clear()
 
         # choose seeds from symbolic feedback
+        
         if kind == 0:
             # normal test
             self.executedContractName = self.fuzzingTarget
@@ -151,8 +170,12 @@ class ArgumentFactory(object):
             self.testArgument = f'{{"from":"{self.forgedNotificationTokenFromName}", ' + \
                                 f'"to":"{self.forgedNotificationAgentName}", ' + \
                                 f'"quantity":{self.generateDataForSimpleType("asset")}, ' + \
-                                f'"memo":{self.generateDataForSimpleType("string")}}}'
+                                f'"memo":"boxer:tigger"}}'
                                 
+
+            # f'"memo":"insurance"}}'
+            # self.testArgument = "[\"" + self.forgedNotificationTokenFromName + "\", \"" + self.forgedNotificationAgentName + "\", " \
+            # + self.generateDataForSimpleType("asset") + ", " + "\"" + self.contractName + "\"" +  "]"
         elif kind == 2:
             # fake eos@1 using fake.token
             # fake.token transfer [fakeosio, xxxx, 100 EOS, memo] fakeosio@active
@@ -189,6 +212,32 @@ class ArgumentFactory(object):
         else:
             raise RuntimeError(f"Invalid kind={kind}")
 
+
+        # if self.contractName == "eosio.token":
+        #     if kind == 3:
+        #         self.testArgument = f'{{"from":"{self.testEOSTokenFromName}", '+\
+        #                             f'"to":"{self.realActiveAccount}", ' + \
+        #                             f'"quantity":{self.generateDataForSimpleType("asset")}, '+ \
+        #                             f'"memo":{self.generateDataForSimpleType("string")}}}'
+
+        #         # '{\"' + self.testEOSTokenFromName + "\", \"" + self.realActiveAccount + "\", " \
+        #         # + self.generateDataForSimpleType("asset") + ", " + self.generateDataForSimpleType("string") + "}"
+            
+        #     else: # kind==1
+               
+        # # k==2
+        # elif self.contractName == self.fakeTransferAgentName:
+    
+        #     self.testArgument = f'{{"from":"{[self.fakeTransferAgentName, self.realActiveAccount][random.randint(0, 1)]}", ' + \
+        #                         f'"to":"{self.realActiveAccount}", ' + \
+        #                         f'"quantity":{self.generateDataForSimpleType("asset")}, ' + \
+        #                         f'"memo":{self.generateDataForSimpleType("string")}}}'
+
+        #     # self.testArgument = "[\"" + [self.fakeTransferAgentName, self.activeAccount][random.randint(0, 2)] + "\", \"" \
+        #     # + self.activeAccount + "\", " + self.generateDataForSimpleType("asset") + ", " + self.generateDataForSimpleType("string") + "]";
+        # #k==0
+        # else:
+        #     self.generateData(self.getStructDetail(self.getActionType(functionName)))
     
     def generateNewDataType(self, _funcName):
         self.testArgumentType = self.generateDataType(self.getStructDetail(self.getActionType(_funcName)))
@@ -202,6 +251,13 @@ class ArgumentFactory(object):
         Returns:
             A dictory.
         """
+        # print("+++", structDetail)
+        # a = self.getActionType(self.functionName)
+        # b = self.getStructDetail(a)
+        # print(a)
+        # print('---', b['fields'])
+        # exit()
+        # structDetail= []
         if structDetail['name'] == "~": 
             return structDetail['base']
         typeDict = list()
@@ -276,6 +332,11 @@ class ArgumentFactory(object):
         if intRes:
             prexType = intRes.group(1)
             bitNum = int(intRes.group(2))
+            # if prexType.startswith('u'):
+            #     down, up = 0, 2**(bitNum) - 1
+            # else:
+            #     down, up = -1* (2**(bitNum-1)), 2**(bitNum-1) -1
+            # return f"{random.randint(down, up)}"
             if prexType.startswith('u'):
                 return f"{random.randint(0, 256)}"
             else:
@@ -284,6 +345,12 @@ class ArgumentFactory(object):
 
         elif floatRes:
             bitNum = int(floatRes.group(1))
+            # if bitNum == 32:
+            #     down, up = 0, 128# 2**128-1
+            # else:
+            #     # TODO for int128 but now is good enough
+            #     down, up  = 0, 128# 2**(1024) -1
+            # return f"{random.randint(0, 100)}.{('%.4f' % random.random())[2:]}"
             return f"{random.randint(0, 100)}.{('%.4f' % random.random())[2:]}"
 
 
@@ -298,6 +365,7 @@ class ArgumentFactory(object):
             return '\"'+''.join(random.sample(string.ascii_letters, randLen)) + '\"'
 
         elif structName == "asset":
+            # return "\"0.1000 EOS\""
             assetValue = random.randint(1, 1000000)
             firstString = str(int(assetValue // 10000))
             secondString =  "%04d" % (assetValue % 10000)
@@ -317,6 +385,12 @@ class ArgumentFactory(object):
             return f"\"EOS\""
 
         elif structName == "name":
+            # nameLoop = self.activeAccount# ["\"bob\"", f'\"{self.fuzzingTarget}\"']
+            # if self.realActiveAccount:
+            #     nameLoop.append(f'\"{self.realActiveAccount}\"')
+            # nameRtVal = nameLoop[random.randint(0, len(nameLoop)-1)]
+            # if random.randint(0, 1):
+                # self.realActiveAccount = nameRtVal
             return f'\"{self.activeAccount}\"'#nameRtVal
             # std::string nameReturnValue;
             # if(dataRange == random || !pSetting || pSetting->accountList.size() == 0) nameReturnValue = activeAccount; 
@@ -340,6 +414,7 @@ class ArgumentFactory(object):
         elif structName == 'signature':
             return "\"SIG_K1_K3dztmFctY8QPgD6BEnxaV4s1gxyfHPZYTqHx8gH9Hiq2MLvn8Uc4ki6w7C89GVXAQ5JFM37BERe5qJSVHAqSkD8AabtKR\""
         
+
         elif structName == "time_point_sec":
             return '"2021-01-01T00:00:00.000"'
         elif structName == "time_point":
@@ -356,11 +431,59 @@ class ArgumentFactory(object):
             return  '"0987654321ABCDEF0987654321FFFF1234567890ABCDEF001234567890ABCDEF0987654321ABCDEF0987654321FFFF1234567890ABCDEF001234567890ABCDEF"'
         else:
             return "{}"
-def test():
-    contractName = 'hello'
-    abi = ABIObj(f'/home/szh/contracts/{contractName}/{contractName}.abi')
-    testData = ArgumentFactory(contractName, abi)
-    for action in abi.actions:
-        testData.generateNewData(action['name'], 3)
-        print(testData.testArgument)
+
+    def deserializeStream2JsonStr(self, actionName, dataSteam, abiPath):
+        os.system('rm /tmp/tmpActionData.json')
+        with open('/tmp/tmpActionData.stream', 'w') as f:
+            f.write(dataSteam)
+        print(dataSteam, "==========")
+        # exit(-1)
+        returnValue = subprocess.call(["nodejs", setting.serializeBin, f"--abi_path={abiPath}",
+                                      f"--action_name={actionName}", f"--method=des"])
+        if returnValue != 0:
+            setting.logger.fatal(f"Fail to deserialize : {dataSteam}")
+            raise RuntimeError("Fail to deserialize")
+          
+        # os.system(f"nodejs {setting.serializeBin} --abi_path={self.abi.fpath} \
+        #     --action_name={actionName} --data=\'{dataSteam}\' --method=des")
         
+        with open('/tmp/tmpActionData.json', 'r') as f:
+            deserializeJson = json.load(f)
+        return json.dumps(deserializeJson) 
+
+
+    def serializeJsonStr2Stream(self, actionName, dataJsonStr, abiPath):
+        os.system('rm /tmp/tmpActionData.stream')
+        # os.system(f"nodejs {setting.serializeBin} --abi_path={self.abi.fpath} \
+        #     --action_name={actionName} --data=\'{dataJsonStr}\'")
+        with open('/tmp/tmpActionData.json', 'w') as f:
+            f.write(dataJsonStr)
+        # print(dataJsonStr, "==============")
+        # exit(-1)
+        returnValue = subprocess.call(["nodejs", setting.serializeBin, f"--abi_path={abiPath}",
+                                f"--action_name={actionName}"])
+        print('cmd= ', " ".join(["nodejs", setting.serializeBin, f"--abi_path={abiPath}",
+                                f"--action_name={actionName}"]) )
+        if returnValue != 0:
+            setting.logger.fatal(f"Fail to serialize : {dataJsonStr}")
+            raise RuntimeError("Fail to serialize")
+        with open('/tmp/tmpActionData.stream', 'r') as f:
+            serializeStream = f.readline().strip()
+        # print('after:', serializeStream)
+
+        return serializeStream
+
+
+# nodejs /home/szh/deserialize/eos-js/main.js 
+# --abi_path=/home/szh/dynamicAnalyze/EOSFuzzer/symzzer/rt_info/hello/hello.abi      
+#        --action_name=hi --data_stream=0000000000000e3da29475000000000004454f5300000000
+#                             0000000000000e3d0103617364a29475000000000004454f5300000000
+# def test():
+#     contractName = 'hello'
+#     abi = ABIObj(f'/home/szh/contracts/{contractName}/{contractName}.abi')
+#     testData = ArgumentFactory(contractName, abi)
+#     for action in abi.actions:
+#         testData.generateNewData(action['name'], 3)
+#         print(testData.testArgument)
+        
+# test()

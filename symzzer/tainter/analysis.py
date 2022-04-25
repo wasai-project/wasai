@@ -20,6 +20,9 @@ COMPAREOP = 'compareableOp'
 LOCALPRIX = 'L'
 GLOBALPRIX = 'G'
 
+
+# Source = collections.namedtuple('Source', ['type', 'value'])
+
 '''
  customelize list()
 '''
@@ -41,6 +44,15 @@ class AssetEOS:
             sym >>= 8
         return s
 
+    # @property
+    # def cleosArg(self):
+    #     amount, symbol = self.toString().split(' ', 1)
+    #     newValTup = [float(amount), symbol]
+    #     if symbol == '':
+    #         newValTup[1] = 'EOS'
+    #     return ' '.join([str(item) for item in newValTup])  
+
+
 class NameEOS:
     def __init__(self, val):
         self.value = val
@@ -59,7 +71,8 @@ class NameEOS:
             ret.pop()
         if len(ret) == 0:
             return '.............'
-        retName = ''.join(ret)
+        return ''.join(ret)
+        
     
     @property
     def clesoArg(self):
@@ -79,7 +92,21 @@ class listProto(list):
     def size(self):
         return len(self.items)
 
+    # def __getitem__(self, idx):
+    #     try:
+    #         return self.items[idx]
+    #     except:
+    #         return []
+        # raise RuntimeError(f"Out of range:{idx}@{self.size()}")
+
     def __setitem__(self, idx, item):
+        # if idx == self.size():
+        #     self.push(item)
+        # elif idx < self.size():
+        #     self.items[idx] = item
+        # else:
+        #     raise RuntimeError('out of range in ListProto')
+        nowSize = self.size()
         idx = nowSize if idx == -1 else idx
         if idx < nowSize:
             self.items[idx] = item
@@ -134,6 +161,16 @@ class listProto(list):
         return str(self.size()) + ' ' + str(self.items)
 
 
+# class Taint(object):
+#     def __init__(self):
+#         self.label = 0# can hold any kind of more complex label for now, just 0 (not tainted) and 1 (tainted)
+#         self.name=""
+#         self.source = None
+
+#     def __str__(self):
+#         return "taint-" + str(self.label)
+
+
 '''
 Function Call Stack
 call_pre x # call/indirect_call
@@ -146,6 +183,7 @@ return         # leave the function
 end_function   # clear the stack of x
 post_function  # push retVals to mother's stack
 '''
+
 
 class Analysis(object):
     def __init__(self, inputTp, inputJson, libf, actFuncID):
@@ -291,7 +329,10 @@ class Analysis(object):
         if self.debug:
             print("[+] ORI_ARGS",argLocals)
         self.locals.push(argLocals)
+        # print('----------',argLocals, args)
+        # exit()
 
+        # print("[+] build arg sym done!", self.locals.peek())
 
     def handleLibfunc(self, location, targetFunc, args, indirectTableIdx):
         if self.libFunc[targetFunc] == 'eosio_assert':
@@ -306,13 +347,20 @@ class Analysis(object):
             _ = copy.deepcopy(self.locals.peek()[-1]) # the first top 
             if self.debug:
                 print(f"[-] condition for asseet: @@@concrete:{cond}----symbolic{symCondition}")
+                # if 'L1' in str(symCondition) or 'L2' in str(symCondition) or 'L3' in str(symCondition):
+                #     exit()
             self.solve(location, cond, -1, symCondition) 
-
+            # print(self.cleosArgs )
+            # exit()
         
         # config stack for libf TODO
         libStack = listProto()
         self.lastStack.push(libStack) 
         
+        # last Stack self.lastStack.pop()
+        # for retVal in []:
+        #     self.stack.peek().push(retVal)
+
     def solve(self, location, currentCondition, conditionalTarget, symCondition):
         if location.func != self.actFuncId:
             return
@@ -352,11 +400,18 @@ class Analysis(object):
 
         fbTuple = utils.Location_FB(location.func, location.shift, flag)
 
+        # print(e, z3util.get_vars(e))
         rese = e
         for c in self.pathConstratins:
+            # print('iter:', z3util.get_vars(c), z3util.get_vars(e))
             ct, et = z3util.get_vars(c), z3util.get_vars(e)
             if len(ct) == len(et) == 1 and str(ct) == str(et):
                 rese = And(rese, c)
+        
+        # print("---------------------------\n\n")
+        # print(rese)
+        # print("---------------------------\n\n")
+
         self.queue.append((fbTuple, rese))
         
 
@@ -365,13 +420,20 @@ class Analysis(object):
         return 
 
         s = Solver()
-        s.set("timeout", setting.solverTimeout)  # mills second
+        # s.set("timeout", setting.solverTimeout)  # mills second
         s.add(e)
 
+        # if 'L8' in str(symCondition):
+        #     print(s)
+        #     exit()
         if self.debug or True:
+            # print(location)
             print(f"IF ### {s} ### ===== JUMP ===> {conditionalTarget}")
             print(location)
-
+            # exit()
+        # print(e)
+        # print("children:",  e.children()[0].children()[0].children())
+        # print('begin-check()')
         if s.check() != sat:
             print('check---', s.check())
             self._cache.add(str(e))
@@ -382,10 +444,28 @@ class Analysis(object):
                 print("[-] symzzer: UNSAT here")
             return
         print('check---', s.check())
+        # print('end-check-pass')
+        # print('begin-model')
+        # print(e, e.children()[0], [type(t) for t in e.children()[0].children()])
         mod = s.model()
         # print(setting.solverTimeout)
         if self.debug or True:
             print("----------MOD----------", mod)
+        
+
+        '''
+        if False and len(mod) > 1:
+            if len(mod) == 2 and any(["to_ieee_bv" in str(val) for val in mod]):
+                pass # try to solve
+            else:
+                for val in mod: 
+                    symSolved = mod[val]
+                    if self.debug:
+                        print('--drop--', val, symSolved, type(symSolved))
+                    #fp.to_ieee_bv 　　　　　[else -> 0] 　<class 'z3.z3.FuncInterp'>
+                # constraints too complex to solve
+                return 
+        '''
 
     def seedMining(self, fbTuple, mod):
         for val in mod: 
@@ -405,6 +485,9 @@ class Analysis(object):
             elif name.startswith('struct_'):
                 localPos = utils.localPos(name[7:])
                 structEIdx = utils.structEPos(name)
+                # if structEIdx == 4:
+                #     print(structEIdx)
+                #     exit()
 
             elif name == 'memory':
                 continue
@@ -442,18 +525,24 @@ class Analysis(object):
                     continue
                 self.cleosArgs.append((fbTuple, (localPos-1, -1), newVal))    
                                 
+                # if location.func == 37 and location.shift == 6:
+                #     print(e, mod, tp, _key, newVal, fbTuple, localPos)
+                #     exit()
+
 
     def arg2abiType(self, symbol, symExpr, tp, oriData):
         if self.debug or True:
             print('----debug----arg2abiType---tp=', tp, 'symExpr=', symExpr)
-
+        # exit()
         if  tp == 'asset':
             assetval = AssetEOS(symExpr.as_long())
             aVal, aSym = assetval.toString().split(' ', 1)
+            # print('===', aVal, aSym)
 
             oriVal, oriSym = oriData.split(' ', 1)
             oriprecision = len(oriVal.split('.', 1)[1]) % 19 if '.' in oriVal else 0 # precision should be <= 18
-
+            
+            
             # asset 检查仅限symbol or value
            
             if assetval.symbol == 0:
@@ -488,6 +577,8 @@ class Analysis(object):
                 else:
                     newVal = struct.pack('<Q', newVal)  # the same
                     newVal = struct.unpack('<d', newVal)[0]
+                # print('float=', newVal , type(newVal), tp, '??')
+                # exit()
 
         elif tp == 'string':
             stringArg = oriData
@@ -512,6 +603,22 @@ class Analysis(object):
         return newVal
 
     def start(self, location):
+        '''
+        #  create taints for all self.glovals
+        for (let i = 0 i < Wasabi.module.info.self.glovals.length i++):
+            global = Wasabi.module.info.self.glovals[i]
+            if (self.debug) print("Creating taint for self.glovals[" + i + "]")
+            self.glovals[i] = taint()
+        }
+        #  any other data for which need to initialize taints?
+        '''
+        # taint locals
+        # for i in range(6):
+        #     if (self.debug):
+        #         print("Creating taint for locals[" + i + "]")
+        #     _t = Taint()
+        #     _t.label = 1
+        #     self.stack.peek().locals.push(_t)
         pass
 
     def nop(self, location):
@@ -522,6 +629,15 @@ class Analysis(object):
         return
 
     def if_(self, location,  condition):
+        # s = Solver()
+        # # s.set("timeout", setting.solverTimeout)  # mills second
+        # s.add(condition == 1)
+        # print(s.check())
+        # mod = s.model()
+        # for val in mod: 
+        #     print(val, mod[val])
+        # # print(condition)
+        # exit()
         self.solve(location, condition, -2, self.stack.peek().pop())
 
     def br(self, location,  target):
@@ -543,6 +659,10 @@ class Analysis(object):
         condition = self.stack.peek().pop() #c
         arg1 = self.stack.peek().pop()      #a
         arg2 = self.stack.peek().pop()      #b
+        # if cond != 0
+        # if is_boo/l(cond):
+            # self.stack.peek().push(If(cond, arg2, arg1))
+        # else:
         if is_bool(condition):
             self.stack.peek().push(If(condition, arg2, arg1))
         else:
@@ -558,6 +678,8 @@ class Analysis(object):
 
     def end(self, location, type, beginLocation):
         if type == 'function':
+            # clear scope of callee
+            # self.locals.pop()
             self.lastStack.push(self.stack.pop())
   
     def call_pre(self, location, targetFunc, args, indirectTableIdx):
@@ -631,7 +753,11 @@ class Analysis(object):
                     f"does't match any kind of unary instrument@{instrName}")
         except Exception as e:
             print('[-] Handing analysis.unary@',instrName, e, "continue")
+            # print(fpAbs(arg0))
+            # print(isinstance(arg0, FPRef))
+            # print(ftype = utils.getFPType(arg1))
             result = aresult
+            # exit()
 
         self.stack.peek().push(result)
 
@@ -654,7 +780,10 @@ class Analysis(object):
 
         self.stack.peek().push(result)
 
-
+        # if location.func == 37 and location.shift == 5:
+        #     print(op, input, aresult, location, arg1,arg2, result)
+        #     exit()
+ 
     def load(self, location,  op, memarg, value):
         offset = memarg.offset.as_long() # to int
         baseAddr = memarg.addr.as_long() # to_int
@@ -684,9 +813,13 @@ class Analysis(object):
         elif op == "i32.load8_u":
             if self.debug:
                 print("[+] i32.load8_u:effectadr=", effectiveAddr, type(effectiveAddr), symAddr)
-
+            # symValue = z3.simplify(z3.Select(self.syMemory.z3Array, effectiveAddr))
+            # print(symValue)
+            # print('string')
             symValue = self.syMemory.load(
                 symAddr, effectiveAddr, 'I', 1, 'IU', 4, value)
+            # print('[+] i32.load8_u:symbolic element::',symValue)
+            # exit()
 
         elif op == "i32.load16_s":
             symValue = self.syMemory.load(
@@ -785,6 +918,13 @@ class Analysis(object):
             # print('---local-tee, ', localIndex, '--', self.locals.peek())
             symval = self.stack.peek().peek()
             self.locals[-1][localIndex] = symval
+            # print('---after --local-tee, ', localIndex, '--', self.locals.peek())
+            # print('---', self.locals.peek()[-2])
+            # print(self.locals.peek()[localIndex], symval)
+            # print(self.locals.peek())
+            # exit()
+            # print(symval, self.locals.peek()[localIndex], self.locals.peek()[localIndex])
+            # exit()
 
         elif op == "local.get":
             symval = self.locals.peek()[localIndex]

@@ -133,68 +133,68 @@ def reduceCoverage(rawPath, reduceMap):
                             newContents += f"(if (i64.eq (get_local 1) (i64.const -4060558379637014528 ) ) (then get_local 0 get_local 1 get_local 2 (call {fid} )) )\n"
                             
                             # Opaque Input
-                            # for _i in range(3):
-                            #     newContents += f'''get_local {_i}
-                            #                     i64.const 32
-                            #                     i64.shr_u
-                            #                     i32.wrap/i64
+                            for _i in range(3):
+                                newContents += f'''get_local {_i}
+                                                i64.const 32
+                                                i64.shr_u
+                                                i32.wrap/i64
 
-                            #                     get_local {_i}
-                            #                     i64.const 33
-                            #                     i64.shr_u
-                            #                     i32.wrap/i64
-                            #                     i32.const 1533916891
-                            #                     i32.and
-                            #                     i32.sub
-                            #                     get_local {_i}
-                            #                     i64.const 34
-                            #                     i64.shr_u
-                            #                     i32.wrap/i64
-                            #                     i32.const 153391689
-                            #                     i32.and
-                            #                     i32.sub
-                            #                     tee_local 3
-                            #                     i32.const 3
-                            #                     i32.shr_u
-                            #                     get_local 3
-                            #                     i32.add
-                            #                     i32.const -954437177
-                            #                     i32.and
-                            #                     i32.const 63
-                            #                     i32.rem_u
-                            #                     get_local {_i}
-                            #                     i32.wrap/i64
-                            #                     tee_local 3
-                            #                     get_local 3
-                            #                     i32.const 1
-                            #                     i32.shr_u
-                            #                     i32.const 1533916891
-                            #                     i32.and
-                            #                     i32.sub
-                            #                     get_local 3
-                            #                     i32.const 2
-                            #                     i32.shr_u
-                            #                     i32.const 153391689
-                            #                     i32.and
-                            #                     i32.sub
-                            #                     tee_local 3
-                            #                     i32.const 3
-                            #                     i32.shr_u
-                            #                     get_local 3
-                            #                     i32.add
-                            #                     i32.const -954437177
-                            #                     i32.and
-                            #                     i32.const 63
-                            #                     i32.rem_u
-                            #                     i32.add
-                            #                     i64.extend_u/i32
+                                                get_local {_i}
+                                                i64.const 33
+                                                i64.shr_u
+                                                i32.wrap/i64
+                                                i32.const 1533916891
+                                                i32.and
+                                                i32.sub
+                                                get_local {_i}
+                                                i64.const 34
+                                                i64.shr_u
+                                                i32.wrap/i64
+                                                i32.const 153391689
+                                                i32.and
+                                                i32.sub
+                                                tee_local 3
+                                                i32.const 3
+                                                i32.shr_u
+                                                get_local 3
+                                                i32.add
+                                                i32.const -954437177
+                                                i32.and
+                                                i32.const 63
+                                                i32.rem_u
+                                                get_local {_i}
+                                                i32.wrap/i64
+                                                tee_local 3
+                                                get_local 3
+                                                i32.const 1
+                                                i32.shr_u
+                                                i32.const 1533916891
+                                                i32.and
+                                                i32.sub
+                                                get_local 3
+                                                i32.const 2
+                                                i32.shr_u
+                                                i32.const 153391689
+                                                i32.and
+                                                i32.sub
+                                                tee_local 3
+                                                i32.const 3
+                                                i32.shr_u
+                                                get_local 3
+                                                i32.add
+                                                i32.const -954437177
+                                                i32.and
+                                                i32.const 63
+                                                i32.rem_u
+                                                i32.add
+                                                i64.extend_u/i32
                                                 
-                            #                     get_local {_i}
-                            #                     i64.add 
-                            #                     get_local {_i}
-                            #                     i64.popcnt
-                            #                     i64.sub 
-                            #                     set_local {_i}\n'''
+                                                get_local {_i}
+                                                i64.add 
+                                                get_local {_i}
+                                                i64.popcnt
+                                                i64.sub 
+                                                set_local {_i}\n'''
 
                             isOpaquePredict = True
                             

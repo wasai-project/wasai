@@ -1,0 +1,42 @@
+{
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT Sun Sep 22 19:50:01 2019",
+    "version": "eosio::abi/1.0",
+    "structs": [
+        {
+            "name": "f",
+            "base": "",
+            "fields": [
+                {
+                    "name": "val",
+                    "type": "uint64"
+                }
+            ]
+        },
+        {
+            "name": "g",
+            "base": "",
+            "fields": [
+                {
+                    "name": "val",
+                    "type": "uint64"
+                }
+            ]
+        }
+    ],
+    "types": [],
+    "actions": [
+        {
+            "name": "f",
+            "type": "f",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "g",
+            "type": "g",
+            "ricardian_contract": ""
+        }
+    ],
+    "tables": [],
+    "ricardian_clauses": [],
+    "abi_extensions": []
+}

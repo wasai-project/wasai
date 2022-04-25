@@ -33,9 +33,13 @@ WebAssembly (Wasm) smart contracts have shown growing popularity across blockcha
 
 ```bash
 # python3.6.9
-python3 -m venv ./
-activate ./venv/bin/activate
-python3 -m pip install -r requirements.txt
+# python3 -m venv ./
+# activate ./venv/bin/activate
+# python3 -m pip install -r requirements.txt
+docker build -t localhost/client-eos:wasai .
+docker run --rm -ti  localhost/client-eos:wasai
+# in the container 
+python3 -m bin.fuzz ./examples/batdappboomx/batdappboomx.wasm ./examples/batdappboomx/batdappboomx.abi batdappboomx 300 300  ./rt/ --detect_vuls 020000
 ```
 
 2.   run example
@@ -47,7 +51,18 @@ python -m bin.fuzz <wasmPath> <abiPath> <contractName> <timeout> <fuzzCnt> <save
 The result should be like:
 
 ```
-
+[+] Executed EOSPONSER# 68
+- Checking Fakeos
+[+] final report: {
+    "name": "batdappboomx",
+    "time": "5.45s",
+    "bugs": [
+        2
+    ],
+    "lava_eos": [],
+    "lava_notif": [],
+    "logLifes": []
+}
 ```
 
 # Benchmark

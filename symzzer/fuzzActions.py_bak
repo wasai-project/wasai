@@ -1,0 +1,448 @@
+import os
+import subprocess
+import time
+import timeout_decorator
+import json
+import itertools
+import logging
+import random
+import copy
+
+import symzzer.setting as setting
+from symzzer.setting import logger
+
+from symzzer.node import Node, PriorityQueue
+from symzzer.logAnalyzer import FeedbackFactory
+from symzzer.argumentFactory import ArgumentFactory, ABIObj
+import symzzer.utils as utils
+
+from symzzer.tainter.wasabiHooker import Wasabi
+import symzzer.tainter.utils as taintutils
+
+# global variable
+idxPeriod = 1
+
+DISABLE = '0'
+ENABLE  = '1'
+FFMODE  = '2'
+
+def executeCommand(arguments, mustExecute = False, rpsRequired = False):
+    cmd = ' '.join(arguments)
+    # print(cmd)
+    if rpsRequired:
+        # print('ddd:', cmd)
+        r = os.popen(cmd)  
+        text = r.read()  
+        r.close()  
+        return text 
+    else:
+        if mustExecute:
+            testRound = 16
+            returnValue = -1
+            while testRound > 0:
+                testRound -= 1
+                returnValue, out = subprocess.getstatusoutput(cmd)
+                # print(returnValue, out)
+                if returnValue in [0, 1]:
+                    break
+            
+        else:
+            returnValue, out = subprocess.getstatusoutput(cmd)
+        return True if returnValue == 0 else False
+
+
+
+def createAccount(name, publicKey, mustExecute = False):
+    #executeCommand(setting.cleosExecutable + ' create account eosio ' + name + ' ' + publicKey, mustExecute)
+    executeCommand([setting.cleosExecutable, 'create', 'account', 'eosio', name, publicKey], mustExecute)
+
+def setContract(name, contractAddress, permission, mustExecute = False):
+    #executeCommand(setting.cleosExecutable + ' set contract ' + name + ' ' + contractAddress, mustExecute)
+    executeCommand([setting.cleosExecutable, 'set', 'contract', name, contractAddress, '-p', permission], mustExecute=True)
+
+def pushAction(contract, action, arguments, permission, mustExecute = False, rpsRequired = False):
+    global idxPeriod
+    idxPeriod += 1
+    logger.debug(' '.join([setting.cleosExecutable, 'push', 'action', contract, action, '\'' + arguments + '\'', '-p', permission])) #, '>> /dev/null 2>&1' if rpsRequired else ''
+    return executeCommand([setting.cleosExecutable, 'push', 'action', 
+     contract, action, '\'' + arguments + '\'', '-p', permission], mustExecute, rpsRequired)#'--json' if rpsRequired else "--console"
+     #, '' if rpsRequired else '>> /dev/null 2>&1'
+    
+def addCodePermission(name, mustExecute = False):
+    #executeCommand(setting.cleosExecutable + ' set account permission ' + name + ' active --add-code', mustExecute)
+    executeCommand([setting.cleosExecutable, 'set', 'account', 'permission', name, 'active', '--add-code'], mustExecute)
+
+def getCurrency(account, permission, mustExecute = False):
+    #executeCommand(setting.cleosExecutable + ' push action ' + contract + ' ' + action + ' \'' + arguments + '\' -p ' + permission + '@active', mustExecute)
+    rt = executeCommand([setting.cleosExecutable, 'get', 'currency', 'balance', permission, account, 'EOS'], mustExecute, rpsRequired=True)
+    tmp = rt.split(' ')[0]
+    return float(tmp) if tmp else 0
+
+
+def initEosEnv():
+    # init EOS environment & deploy contract
+    os.system('killall keosd')
+    os.system('killall nodeos')
+    os.system('keosd --max-body-size 100000000 &')
+    os.system('rm -rf ' + setting.eosFilePath)
+    os.system('rm ./nodeos.log')
+    
+    os.system('echo ' + setting.aPasswordToKeosd + ' | ' + setting.cleosExecutable + ' wallet unlock')
+    
+    os.system(setting.nodeosExecutable + ' -e -p eosio\
+                            --plugin eosio::producer_plugin \
+                            --plugin eosio::chain_api_plugin \
+                            --plugin eosio::http_plugin \
+                            --access-control-allow-origin=\'*\' \
+                            --contracts-console \
+                            --http-validate-host=false \
+                            --verbose-http-errors \
+                            --max-transaction-time=150001 \
+                            --max-body-size=102400000 \
+                            --genesis-json genesis.json \
+                            >> nodeos.log 2>&1 &')
+    time.sleep(1)
+    # exit(0)
+    
+    createAccount('bob', setting.eosioTokenPublicKey, True)
+    addCodePermission('bob', True)
+    # createAccount('clerk', setting.eosioTokenPublicKey, True)
+    createAccount('eosio.token', setting.eosioTokenPublicKey, True)
+    setContract('eosio.token', setting.eosioTokenContract, 'eosio.token@active', True)
+    pushAction('eosio.token', 'create', '["eosio","20000000000000.0000 EOS"]', 'eosio.token@active', True)
+    pushAction('eosio.token', 'issue', '["eosio", "20000000000000.0000 EOS",""]', 'eosio@active', True)
+
+    createAccount('fake.token', setting.eosioTokenPublicKey, True)
+    createAccount('fakeosio', setting.eosioTokenPublicKey, True)
+    setContract('fake.token', setting.eosioTokenContract, 'fake.token@active', True)
+    addCodePermission('fake.token', True)
+    addCodePermission('fakeosio', True)
+
+    pushAction('fake.token', 'create', '["fakeosio","200000000000000.0000 EOS"]', 'fake.token@active', True)# fake EOS
+    
+    pushAction('fake.token', 'issue', '["fakeosio", "20000000000000.0000 EOS",""]', 'fakeosio@active', True)
+    
+    pushAction('eosio.token', 'transfer', '["eosio","fakeosio","10000000.0000 EOS","FUZZER"]', 'eosio@active', True)
+    # pushAction('fake.token', 'transfer', '["e","fakeosio","10000000.0000 EOS","FUZZER"]', 'eosio@active', True)
+    
+    createAccount('testeosfrom', setting.eosioTokenPublicKey, True)
+    addCodePermission('testeosfrom', True)
+    pushAction('eosio.token', 'transfer', '["eosio","testeosfrom","10000000.0000 EOS","FUZZER"]', 'eosio@active', True)
+
+
+    createAccount(setting.forgedNotificationTokenFromName, setting.eosioTokenPublicKey, True)
+    pushAction('eosio.token', 'transfer', f'["eosio","{setting.forgedNotificationTokenFromName}","10000000.0000 EOS","FUZZER"]', 'eosio@active', True)
+    addCodePermission(setting.forgedNotificationTokenFromName, True)
+    createAccount(setting.forgedNotificationAgentName, setting.eosioTokenPublicKey, True)
+    setContract(setting.forgedNotificationAgentName, setting.atkforgContract, f'{setting.forgedNotificationAgentName}@active', True)
+    pushAction(setting.forgedNotificationAgentName, 'regist', f'["{setting.contractName}"]', 'eosio@active', True)
+    addCodePermission(setting.forgedNotificationAgentName, True)
+
+  
+
+    createAccount('atknoti', setting.eosioTokenPublicKey, True)
+    setContract('atknoti', setting.atknotiContract, 'atknoti@active', True)
+    addCodePermission('atknoti', True)
+
+    # createAccount('atkrero', setting.eosioTokenPublicKey, True)
+    # setContract('atkrero', setting.atkreroContract, 'atkrero@active', True)
+    # addCodePermission('atkrero', True)
+
+    if setting.useAccountPool:
+        createAccount('fuzzacc1', aPublicKey, True)
+        createAccount('fuzzacc2', aPublicKey, True)
+        createAccount('fuzzacc3', aPublicKey, True)
+        os.system('cp ./accounts.conf ' + os.getenv('HOME') + '/.local/share/eosio/')
+
+    # init contract
+    pathContract =  setting.pathHookContract + setting.contractName
+    # os.system('eosio-cpp -o ' + setting.contractName+'.wasm' + ' ' + pathContract+'.cpp' + ' -DCONTRACT_NAME=\\"' + setting.contractName + '\\"')
+
+    createAccount(setting.contractName, setting.aPublicKey)
+    addCodePermission(setting.contractName)
+    setContract(setting.contractName, pathContract, setting.contractName+'@active')
+
+# @timeout_decorator.timeout(setting.timeoutSeconds,  use_signals=True)
+def fuzz(contractABI, feedbackFactory, in_atk=()):
+    contractName = setting.contractName
+    tmpLogger = utils.Logger(os.getenv('HOME') + '/dynamicAnalyze/EOSFuzzer/symzzer/.tmpRes.txt')
+
+    global idxPeriod
+    logging.info(f"{'='*20} {contractName} {'='*20}")
+
+    testDataFactory = ArgumentFactory(contractABI, contractName)
+
+    # init eosio platform
+    initEosEnv() 
+
+    # locate eosponser 我们只分析涉及到 eos 的合约
+    os.system(f'rm -r {setting.logPath}* ; rm {setting.plogPath}')
+    pushAction('eosio.token', 'transfer', '[ "testeosfrom", "' + setting.contractName + '","100.0000 EOS","FUZZER"]', 'testeosfrom@active', mustExecute=True,rpsRequired=False)
+
+    try:
+        feedbackFactory.getTransferEntry() # target eosponser
+        with open(f"{setting.pathHookContract}/actPartly.txt", 'w') as f:
+            f.write( str(feedbackFactory.applyFuncId) + " " + str(feedbackFactory.transferEntry))
+
+    except:
+        # No eosio.token@transfer ==> eosponser
+        logger.info("[-] NO eosponse behaviour!")
+        # print("no eosponse")
+        # setting.rtReport = False
+        tmpLogger.log([-1])
+        return False
+    
+    # print('-----------', feedbackFactory.transferEntry)
+    # exit()
+        
+
+
+    # fuzzing
+    candidateKinds = [0, 0, 0, 0, 0, 1, 1, 2, 2, 1, 2, 3, 4]
+    acceptEOSToken = False
+    isFixForgedBug = False
+    idxPeriod = 1
+    print('---------', setting.maxPeriod)
+    while idxPeriod <= setting.maxPeriod:
+        print("[+] round = ", idxPeriod)
+        idxPeriod += 1
+
+        while isFixForgedBug and 1 in candidateKinds:
+            candidateKinds.remove(1)
+        while acceptEOSToken and 2 in candidateKinds:
+            candidateKinds.remove(2)
+        while acceptEOSToken and 3 in candidateKinds:
+            candidateKinds.remove(3)
+        kind = candidateKinds[idxPeriod%len(candidateKinds)]
+        print('kind = ', kind)
+
+        if setting.isChkOOB != DISABLE:
+            kind = 0
+
+        # 1. choose function
+        _fc = ":ALL"
+        
+        # 考虑把以下代码放入 argumentFactory.py
+        lofter = random.choice([0,1])
+        if kind == 0 and lofter:
+            prexFc =  testDataFactory.functionName
+            if prexFc in feedbackFactory.rdb:
+                rdbs = feedbackFactory.rdb[testDataFactory.functionName] # table
+                if rdbs != []:
+                    fs = []
+                    for rdb in rdbs:
+                        if rdb in feedbackFactory.dbFlow:
+                            fs.extend(feedbackFactory.dbFlow[rdb]['w'])
+                    if fs != []:
+                        _fc = random.choice(fs)
+        # =======================================
+
+        # 2. generate cleos command
+        testDataFactory.generateNewData(_fc, kind)
+        currentFuncName = testDataFactory.functionName
+        logger.info(f'================= testing {currentFuncName} ==========================')
+        testDataFactory.generateNewDataType(currentFuncName)
+
+        fbSeed = feedbackFactory.seeds(currentFuncName)
+        testArgumentStr = json.dumps(fbSeed) if fbSeed != [] else testDataFactory.testArgument
+        # testArgumentStr = testDataFactory.testArgument
+        # 3. execute cleos
+
+        os.system(f"rm {setting.logPath}/* ; rm {setting.plogPath}")
+
+        cmd = ' '.join(['cleos', 'push', 'action', testDataFactory.executedContractName ,
+                 currentFuncName, '\'' + testArgumentStr + '\'', '-p', f'{testDataFactory.activeAccount}@active'])
+        
+        logger.info(cmd)  
+        # cmd = in_cmd
+        feedbackFactory.cmds.append(cmd)
+        # print('_____++++++++++++++====beg', cmd)
+        returnValue, out = subprocess.getstatusoutput(cmd) # sync with nodeos 太慢了？？？
+        if os.listdir(setting.logPath):
+            setting.timePoints.append((int(sorted(os.listdir(setting.logPath), key=lambda fname: int(fname[4:-4]))[0][4:-4]), time.time()))
+        # print('[----------] executed cmd:', out, '@@@')
+        # print('\n'*5)
+
+        os.system(f'cp {setting.logPath}/* {setting.pathHookContract}/rLogs/') # for coverage
+        
+        # print('_____++++++++++++++====end', subprocess.getstatusoutput(f'ls {setting.logPath}'))
+        isExecuted = True if returnValue == 0 else False
+        if 'ABI has an unsupported version' in out:
+            return False
+        if 'Duplicate transaction' in out or 'Expired Transaction' in out:
+            continue
+
+
+        # 4. deserialize logs
+        if not feedbackFactory.processLog('Error' not in out):
+            continue
+
+
+        
+        if setting.isChkOOB != DISABLE and kind == 0 and 'out of bounds memory access' in out:
+            setting.bugSet.append(3)
+            return True
+            # print(feedbackFactory.firstActLog[-1])
+            atkFID, atkOffset, atkClen = in_atk
+            # print(feedbackFactory.firstActLog[-1], '============', atkFID)
+            func, offset = feedbackFactory.firstActLog[-1][2][:2]
+            if func != atkFID:
+                continue
+            elif func == atkFID and offset == atkOffset + atkClen - 1:# crach with OUT OF BRAND
+                return True
+
+        # extract info from logs
+        if kind in [0, 1, 2, 3, 6, 7]:
+            try:
+                feedbackFactory.locateActionPos(index=0, txFuncName=currentFuncName)  # also collect information for first action
+            except RuntimeError as e:
+                continue
+            except:
+                print("[+] ERROR when location actions")
+                continue
+        else:
+            continue
+
+        # save processed logs
+        logTuple = [feedbackFactory.firstActLog, feedbackFactory.firstActPos] # logs, line_pos
+        with open(f"{setting.pathHookContract}/pLogs/{idxPeriod}_{kind}.json", 'w') as f:
+            json.dump([logTuple, testDataFactory.testArgumentType, json.loads(testArgumentStr), cmd], f)
+
+
+        if kind == 1:
+            # 为什么这么慢？？？
+            # 5. feedback base on symbolic execution
+            print('-------------------- emulator -------------------', idxPeriod)
+            if setting.globalDebug:
+                print("??? test argument=", testArgumentStr)
+                print("??? test argument types =", testDataFactory.testArgumentType)
+
+            cleosJson = json.loads(testArgumentStr)
+            inputType = testDataFactory.testArgumentType
+
+            wasabi = Wasabi(inputType, cleosJson, feedbackFactory.importsFunc, feedbackFactory.firstActEntry)
+            
+            # handling first action
+            startPos, endPos, _, _ = feedbackFactory.caseInfo
+            actionLog = feedbackFactory.firstActLog[startPos-1:endPos]
+            for line in actionLog:
+                try:
+                    # if wasabi.analysis.timeoutCnt >= 4:
+                    #     break
+                    _, instr, args, types = line
+                    # print("--debug:logAll:--", instr, args, types,"STACK",wasabi.analysis.stack.peek(), cmd)
+                    # print('-actFuzzer: args=',args)
+                    symArgs = taintutils.buildArgs(instr, args, types)
+                    # print('-actFuzzer: symArgs=',symArgs)
+                    # print("[-] wasabi hook-begin")
+                    wasabi.lowlevelHooks(instr, symArgs)
+                    # print("[-] wasabi hook-end")
+                except Exception as e:
+                    print('[-] ERROR:', e)
+                    break # drop
+
+            # print("[+] =========== output new seeds ====================")
+            newSeeds = list()
+            f = lambda data, k : list(data.keys())[k] 
+            for location, argPosTuple, value in wasabi.analysis.cleosArgs:
+                # TODO 将此 touched branches filter 转移至analysis.solve()中
+                if location in feedbackFactory.touchedBrs[currentFuncName]:
+                    continue
+
+                # print('[+] New Seed Tuple:', argPos, value, seeds)
+                seed = cleosJson.copy()
+                layout_o, layout_i = argPosTuple
+
+                key = f(cleosJson, layout_o)
+                if layout_i != -1:
+                    # struct
+                    if setting.globalDebug:
+                        print(seed, key, layout_i, '@@')
+                    ikey = f(seed[key], layout_i)
+                    seed[key][ikey] = value
+                    if setting.globalDebug:
+                        print(f"cmd={cmd} ---- newSeed={seed}, argPosTuple={argPosTuple}, value={value}")
+                   
+                else:
+                    seed[key] = value 
+
+                newSeed = (location, seed)
+                feedbackFactory.seedDict[currentFuncName].append(newSeed)
+                feedbackFactory.touchedBrs[currentFuncName].add(location)
+                # print(json.dumps(seed))
+                # print(feedbackFactory.seedDict[currentFuncName])
+                # exit()
+                print('[+] newSeed generated:', newSeed)
+                
+        
+        # print('[+] ============ runtime debug ================')
+        # for cmd in feedbackFactory.cmds:
+            # print(cmd)
+
+        if setting.detectVul:
+            # the detectors
+            if setting.isChkPems != DISABLE and 6 not in setting.bugSet:
+                if feedbackFactory.authCheckFault():
+                    logging.info("permission check fault")
+                    setting.bugSet.append(6)
+
+                    # fast mode
+                    if setting.isChkPems == FFMODE:
+                        return True
+
+            '''
+            if setting.isRollbak and feedbackFactory.usedTaposFunctionThenEosioTokenTransfer():
+                # success
+                logging.info("Tapos Bug")
+                CASEREPORT.append(0)
+                tmpLogger.log(CASEREPORT)
+            '''
+
+            if setting.isFakeNot != DISABLE and isFixForgedBug == False and kind == 1:
+                '''
+                if idxPeriod > 100:
+                    # did't find a protection 
+                    logger.info("Fake Notification: did't touch protection")
+                    setting.bugSet.append(1)
+
+                    if setting.isFakeNot == FFMODE:
+                        return True
+                '''
+                
+                _magic = feedbackFactory.checkForgedNotificationBug(testDataFactory.forgedNotificationAgentName, contractName, isExecuted)
+                # print('[-] fake notification detector begins~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~', _magic)
+                if _magic == 0:
+                    isFixForgedBug = True
+                    setting.bugSet.append(-11)
+                    if setting.isFakeNot == FFMODE:
+                        return True
+            
+                elif _magic == 1: 
+                    logger.info("Fake Notification")
+                    if 1 not in setting.bugSet:
+                        setting.bugSet.append(1)
+                    
+
+            if setting.isFakeEos != DISABLE and kind in [2, 3] and 2 not in setting.bugSet:
+                if feedbackFactory.hasFakeTransferBug():
+                    logger.info(f"Has fake transfer bug;Fake EOS kind={kind}")
+                    setting.bugSet.append(2)
+                    if setting.isFakeEos == FFMODE:
+                        return True
+
+            # elif setting.isFakeEos != DISABLE and kind == 2 and 2 not in setting.bugSet:
+            #     if feedbackFactory.hasFakeTransferBug():
+            #         logger.info(f"Has fake transfer bug;Fake EOS kind={kind}")
+            #         setting.bugSet.append(2)
+            #         if setting.isFakeEos == FFMODE:
+            #             return True
+
+            # elif setting.isFakeEos != DISABLE and kind == 3 and 3 not in setting.bugSet:
+            #     acceptEOSToken = feedbackFactory.hasFakeTransferBug()
+            #     if acceptEOSToken:
+            #         logger.info(f"Has fake transfer bug;Fake EOS kind={kind}")
+            #         setting.bugSet.append(3)
+            #         if setting.isFakeEos == FFMODE:
+            #             return True
+    
+    return True

@@ -1,0 +1,54 @@
+{
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT Tue Nov 24 11:39:28 2020",
+    "version": "eosio::abi/1.0",
+    "structs": [
+        {
+            "name": "regist",
+            "base": "",
+            "fields": [
+                {
+                    "name": "uname",
+                    "type": "name"
+                }
+            ]
+        },
+        {
+            "name": "transfer",
+            "base": "",
+            "fields": [
+                {
+                    "name": "from",
+                    "type": "name"
+                },
+                {
+                    "name": "to",
+                    "type": "name"
+                },
+                {
+                    "name": "quantity",
+                    "type": "asset"
+                },
+                {
+                    "name": "memo",
+                    "type": "string"
+                }
+            ]
+        }
+    ],
+    "types": [],
+    "actions": [
+        {
+            "name": "regist",
+            "type": "regist",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "transfer",
+            "type": "transfer",
+            "ricardian_contract": ""
+        }
+    ],
+    "tables": [],
+    "ricardian_clauses": [],
+    "abi_extensions": []
+}

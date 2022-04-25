@@ -32,7 +32,14 @@ class FeedbackFactory(object):
             self.importsFuncDict = collections.defaultdict(list)
             for idx, funcName in enumerate(self.importsFunc):
                 self.importsFuncDict[funcName] = idx
-    
+        
+        # for basicblock. now dropped
+        # with open(setting.bbsJsonPath, 'r') as f:
+        #     self.staticBBs = json.load(f)
+        # self.userBlocksCnt = 0
+        # for fid, bbs in self.staticBBs.items():
+        #     if int(fid) > self.applyFuncId:
+        #         self.userBlocksCnt += len(bbs)
 
         self.logScope = list()
         # self.healthyFuncPath =list()
@@ -103,7 +110,60 @@ class FeedbackFactory(object):
 
         return funcList
 
-  
+    # def _processLog(self, flag):
+
+
+    # def _processLog(self, flag):
+    #     self.logScope = list()
+    #     logs = os.listdir(setting.logPath)
+    #     logs = sorted(logs, key=lambda fname: int(fname[4:-4]))
+
+    #     rt = list()
+        
+    #     for singleLogPath in logs: 
+    #         plogList, indirectPos = singleLogBin2Json(f'{setting.logPath}/{singleLogPath}') # byte -> json
+    #         if indirectPos == -1:
+    #             continue
+
+    #         print('[-] _processLog:', singleLogPath,  indirectPos, plogList[indirectPos], plogList[indirectPos+1]) 
+    #         # print(plogList)
+    #         # rt += plogList
+    #         # self.logScope.append(len(plogList))
+    #         # break # maybe we just need the trace of the first action 
+
+    #         if flag:
+    #             try:
+    #                 beg = (plogList[0][1], plogList[0][2][0])
+    #                 end = (plogList[-1][1], plogList[-1][2][0])
+    #                 if (beg[0], end[0]) == ('begin_function', 'end_function') and beg[1] == end[1]:
+    #                     rt += plogList
+    #                     self.logScope.append(len(plogList))
+    #                     break # maybe we just need the trace of the first action 
+    #             except:
+    #                 pass
+    #         else:
+    #             rt += plogList
+    #             self.logScope.append(len(plogList))
+    #             break # maybe we just need the trace of the first action 
+
+    #     if len(self.logScope) == 0:
+    #         plogList, indirectPos = singleLogBin2Json(f'{setting.logPath}/{logs[0]}') # byte -> json
+    #         rt += plogList
+    #         self.logScope.append(len(plogList))
+
+
+    #     self.firstActLog = rt[:self.logScope[0]]
+    #     self.firstActPos = indirectPos        # the idx of call_indirect in logs[]
+    #     self.firstActEntry = self.firstActLog[self.firstActPos + 1][2][0] # the action id 
+    #     # print("[-] ---process log:", self.firstActPos,  self.firstActLog )
+    #     # map actions
+    #     # print('- ', self.firstActEntry)
+    #     with open(setting.plogPath, 'w') as f:
+    #         json.dump(rt, f)
+    #     if not rt:
+    #         raise RuntimeError("Empty Log")
+        
+
     def processLog(self, flag=True):
         self.initSession()
         # empty dir
@@ -131,11 +191,115 @@ class FeedbackFactory(object):
             break
         
         # print("[-] cannot find an executed action\n\n")
+
         if not self.logScope:
            return False
         else:
             return True
+
+        # if setting.isMeasureCoverage:
+        #     # for calculating coverage
+        #     clogs = sorted(logs, key=lambda fname: int(fname[4:-4]))
+        #     currentTime = time.time()
+        #     # copy in raw
+        #     for idx, p in enumerate(clogs):
+        #         fName = str(currentTime + 0.0000001 * idx) + '.txt'
+        #         os.system(f"cp {setting.logPath}/{p} /devdata/cwmdata/symzzerDataset/articles/{setting.contractName}/{fName}")
+
+
+        # parse bin to json
+        # _cnt = 1
+        # try:
+        #     self._processLog(flag)
+        # except:
+        #     pass
+        # while _cnt >= 0:
+        #     try:
+        #         self._processLog(flag)
+        #         break
+        #     except:
+        #         _cnt -= 1
+        #         time.sleep(1)
+
+        # return False if _cnt < 0 else True
         
+
+    def genBasicblocks(self):
+        #  instruction_name [func_id, instr, arg1, agr2...] [type1,type2...]
+        with open(setting.plogPath, 'r') as f:
+            lines = json.load(f)
+
+        # with open(setting.edgesJsonPath, 'r') as f:
+        #     staticEdges = json.load(f)
+
+        # split bb by the order of execution
+        basicblocks = []
+
+        # enumerate blocks
+        new_block = True
+        for line in lines:
+            instrution = Instruction(line[0], line[1], line[2], line[3]) # opcode, name, args, targs
+            ridx = instrution.related_idx
+            inst = instrution.name
+            fid = instrution.function_id
+            if str(fid) not in self.staticBBs:
+                continue
+            # creation of a block
+            if new_block:
+                block = BasicBlock(start_offset=ridx, start_instr=inst, name=utils.format_bb_name(fid, ridx))
+                new_block = False
+            # add current instruction to the basicblock
+            block.instructions.append(instrution)
+            if ridx < 1024: #TODO remove new opcode
+                for bs, bn, toNodes in self.staticBBs[str(fid)]:
+                    if ridx == bn: # locate one bb
+                        new_block = True
+                        block.to_nodes = [node for node in toNodes if utils.getBBFuncId(node) >= self.applyFuncId ]
+                        break
+
+            if new_block:
+                block.end_offset = ridx
+                block.end_instr = inst
+                basicblocks.append(block)
+                new_block = True
+        return basicblocks
+
+
+    def calConfm(self, basicblocks, touchedBBs):
+        # paths=[bb.name for bb in basicblocks]
+        # fbCase = Feedback(path=[bb.name for bb in basicblocks])
+        cBlockVal = 0
+        cbrs = []
+        for idx, bb in enumerate(basicblocks):
+            # print(bb.name, basicblocks[idx+1].name,bb.to_nodes)
+                # [node for node in bb.to_nodes if node in touchedBBs], [node for node in bb.to_nodes if node not in touchedBBs], '\n-------------')
+            # continue
+            if bb.end_instr in ['br_if', 'if', 'br_table']:
+                toNodes = [node for node in bb.to_nodes if node not in touchedBBs]
+                # print(toNodes)
+                oprand1, oprand2 = bb.instructions[-2].args[-2:]
+                cbr = len(toNodes) * utils.num1bits(oprand1 ^ oprand2)
+                cBlockVal += cbr
+                
+                cbrs.append((bb.name, cbr))
+            else:
+                cbrs.append((bb.name, 0))
+
+        # print(cBlockVal)
+        # print('========== cpath', cBlockVal)
+        # print('===========\n', len(touchedBBs))
+        logger.debug(f"get the CBB of current path: val@{cBlockVal}")
+
+        '''
+        start: 'block', 'loop', 'if', 'else'
+        end  : 'else', 'end', 'return'
+        loop_out : 'br', 'br_if', 'br_table'
+        '''
+        return cbrs
+        
+    def evolute(self, stream):
+        return []
+
     def getTransferEntry(self):
         print(os.listdir(setting.logPath))
         _ = self.processLog()
@@ -186,7 +350,57 @@ class FeedbackFactory(object):
                 break
         return False
 
+        # analyzing every action
+        # check all actions
+        '''
+        startPos, endPos, currentActionId, sensitiveFuncList = self.caseInfo
+        lines = self.firstActLog
+        # in first action, contract is safe with (to != self / !(to == self))
+        a = self.name2uint64(attackerString)
+        b = self.name2uint64(attackeeString)
+        hasCheck = False
+        # tmpidx = 0
+        for tmpidx, item in enumerate(lines[startPos:endPos]):
+            _ , instr , args, _ = item
+            if args[0] != self.transferEntry:
+                continue
 
+        with open(setting.plogPath, 'r') as f:
+            lines = json.load(f)
+            size = len(lines)
+
+        isPermissionCheck = False
+        idx = 0
+        while idx < size:
+            _, instr, args, _ = lines[idx]
+            if instr == 'call':
+                funcName = self.isImportFunc(args[2])
+                if funcName != None and funcName in require_auth:
+                    isPermissionCheck = True
+                    logger.info(f"Permission Checking: The action:{args[0]} executes \'{funcName}\'")
+                    return False
+
+                if funcName != None and funcName in ['send_inline', 'send_deferred', 'db_store_i64', 'db_update_i64', 'db_remove_i64'] and isPermissionCheck == False:
+                    logger.info(f"Missing Permission Checking Vulnerability: The action:{args[0]} executes \'{funcName}\'")
+                    return True
+            idx += 1
+
+        return False
+        '''
+
+
+
+    def uint2name(self, value):
+        charmap = ".12345abcdefghijklmnopqrstuvwxyz"
+        str = 13 * ["."]
+        tmp = value
+        i = 0
+        while i <= 12:
+            c = charmap[tmp & (0x0f if i == 0 else 0x1f)]
+            str[12-i] = c
+            tmp >>= (4 if i == 0 else 5)
+            i += 1
+        return ''.join(str).rstrip(".")
 
     def name2uint64(self, nameStr):
         def char_to_value(c):
@@ -217,6 +431,22 @@ class FeedbackFactory(object):
         #     v = v - 2**64
         self.name2uint64Cache[nameStr] = v
         return v 
+        '''
+        os.system('rm /tmp/tmpName2Hex.txt')
+        _magic = subprocess.call(["node", setting.name2HexBin, f"--data={nameStr}"])
+        if _magic != 0:
+            logger.fatal(f"Fail to serialize : {nameStr}")
+            print('fall')
+            raise RuntimeError("Fail to deserialize")
+        with open('/tmp/tmpName2Hex.txt', 'r') as f:
+            data = f.readline().strip()
+                
+        uint64Data = struct.unpack('<Q', binascii.unhexlify(data))[0]
+        self.name2uint64Cache[nameStr] = uint64Data
+        # print('..end...')
+        return uint64Data
+        '''
+
 
 
     '''
@@ -273,8 +503,8 @@ class FeedbackFactory(object):
             elif instr == 'call':
                 # print(lines[endPos])
                 target = args[2]
-                # print('---', target)
                 funcName = self.isImportFunc(target)
+                # print('---', target, '->', funcName)
                 # print('--------> ', funcName)
                 if funcName:
                     self.usedFuncList.append(funcName)
@@ -303,6 +533,9 @@ class FeedbackFactory(object):
                                 self.dbFlow[table] = {"r":[], "w":[]}
                             self.dbFlow[table]['w'].append(txFuncName)
 
+                        # elif funcName.startswith('db_update'):
+                        #     itr, player = [fargs[i*2+1] <<32) | fargs[i*2]  for i in range(0, 2)]
+                        #     self.dbFlow[table]['w'].append(txFuncName)
                         else:
                             # tion: db_get_i64 in initgame
                             pass
@@ -353,6 +586,13 @@ class FeedbackFactory(object):
     '''
     def checkForgedNotificationBug(self, attackerString, attackeeString, isExecuted):
         startPos, endPos, currentActionId, sensitiveFuncList = self.caseInfo
+        # print('\n\n\n---------------- fake notif -------------------')
+        # print(sensitiveFuncList)
+        # print(self.usedFuncList)
+        # for item in self.firstActLog[self.firstActPos:]:
+        #     print(item)
+        # print('-----------------------???------------------------\n')
+
         if currentActionId != self.transferEntry:
             return -1 # keep trying
 
@@ -380,9 +620,15 @@ class FeedbackFactory(object):
 
                     # debug
                     if False:
+                        iii = 0
                         for kk in lines[startPos-1:startPos+ tmpidx + 20]:
                             print(kk)
-              
+                            # if iii == 20:
+                                # print('-------------')
+                            iii+=1
+                        # print(sensitiveFuncList)
+
+                        # ouchedInstr = set()
                         touchInstrCnt = 0
                         for line in lines[startPos:endPos+1]:
                             if line[1] not in self.customTable and line[2][1] != 0xffffffff:
@@ -401,6 +647,139 @@ class FeedbackFactory(object):
             return 1
 
         return -1
+        '''
+        # don't find (to != self / !(to == self))
+        funcEndOffset = max([item[1] for item in self.staticBBs[str(currentActionId)]])
+        if funcEndOffset == 0:
+            return -1
+        # executedIntrs = list()
+        # for line in lines[startPos:endPos+1]:
+        #     # if line[0] >= self.opcodeSetLen:
+        #     #     continue
+        #     func, offset = line[2][:2]
+        #     if func == currentActionId and offset <= funcEndOffset \
+        #         and offset not in executedIntrs:
+        #         executedIntrs.append(line[2][1])
+
+        touchInstrCnt = 0
+        for line in lines[startPos:endPos+1]:
+            # print(line)
+            if line[1] not in self.customTable and line[2][1] != 0xffffffff and line[2][0] == currentActionId:
+                # print(line)
+                touchInstrCnt += 1
+        
+        if touchInstrCnt >= 256 or touchInstrCnt >= setting.forgedPerct * funcEndOffset:
+            logger.info(f'Found Fake Notification:: ' +\
+                f'action@{currentActionId}: execute too much instruction:{touchInstrCnt}:{touchInstrCnt / funcEndOffset}% code')
+            return 1
+
+        # keep going
+        return -1
+        '''
+
+
+    def checkForgedNotificationBug1(self, attackerString, attackeeString, isExecuted):
+        startPos, endPos, currentActionId, sensitiveFuncList = self.caseInfo
+        if currentActionId != self.transferEntry:
+            return -1 # keep trying
+
+        lines = self.firstActLog
+        # in first action, contract is safe with (to != self / !(to == self))
+        a = self.name2uint64(attackerString)
+        b = self.name2uint64(attackeeString)
+        hasCheck = False
+        tmpidx = 0
+        for item in lines[startPos:endPos]:
+            _ , instr , args, _ = item
+            # print(item)
+            if instr in ['i64.ne', 'i64.eq']:
+                operand1 = args[3]<<32 | args[2] 
+                operand2 = args[5]<<32 | args[4] 
+                _res = args[6]
+                if ((a, b) == (operand1, operand2) or (a, b) == (operand2, operand1)):
+                    hasCheck = True
+                    # safe
+                    logger.info(f'Fake Notification has fix:: ' +\
+                        f'action@{currentActionId}:row_{args[1]} checks to({a}) != _self({b})')
+                    # print(a,attackerString ,b,attackeeString, '\n=============')
+                    # print(item, '\n----------------------')
+                    # exit(0)
+                    if True:
+                        iii = 0
+                        for kk in lines[startPos + tmpidx - 25 :startPos+ tmpidx + 20]:
+                            print(kk)
+                            if iii == 20:
+                                print('-------------')
+                            iii+=1
+                        print(sensitiveFuncList)
+
+                        # ouchedInstr = set()
+                        touchInstrCnt = 0
+                        for line in lines[startPos:endPos+1]:
+                            if line[1] not in self.customTable and line[2][1] != 0xffffffff:
+                                # print(line)
+                                # touchedInstr.add(tuple(line[2][:2]))
+                                touchInstrCnt += 1
+                        # funcEndOffset = max([item[1] for item in self.staticBBs[str(currentActionId)]])
+                        print(touchInstrCnt)
+
+                        exit(0)
+                    break
+            tmpidx += 1
+        
+        # for kk in lines[startPos -1:]:
+        #     print(kk)
+        # print(sensitiveFuncList)
+        
+        # exit(0)
+        if not hasCheck:
+            # touchInstrCnt = 0
+            # for line in lines[startPos:endPos+1]:
+            #     if line[1] not in self.customTable and line[2][1] != 0xffffffff and line[2][0] == currentActionId:
+            #         # print(line)
+            #         touchInstrCnt += 1
+        
+            # for kk in lines[startPos -1:startPos+ 130]:
+            #     print(kk)
+        
+            # print(sensitiveFuncList)
+            # exit(0)
+            logger.info(f"Found Fake Notification::action@{currentActionId} no check to != _self {sensitiveFuncList}")
+            return 1
+
+        # try to generate side effects
+        if sensitiveFuncList and not hasCheck:
+            logger.info(f'Found Fake Notification:: ' +\
+                f'action@{currentActionId}: no check to != _self, but execute functions:{sensitiveFuncList}')
+            return 1
+
+        # don't find (to != self / !(to == self))
+        funcEndOffset = max([item[1] for item in self.staticBBs[str(currentActionId)]])
+        if funcEndOffset == 0:
+            return -1
+        # executedIntrs = list()
+        # for line in lines[startPos:endPos+1]:
+        #     # if line[0] >= self.opcodeSetLen:
+        #     #     continue
+        #     func, offset = line[2][:2]
+        #     if func == currentActionId and offset <= funcEndOffset \
+        #         and offset not in executedIntrs:
+        #         executedIntrs.append(line[2][1])
+
+        touchInstrCnt = 0
+        for line in lines[startPos:endPos+1]:
+            if line[1] not in self.customTable and line[2][1] != 0xffffffff and line[2][0] == currentActionId:
+                # print(line)
+                touchInstrCnt += 1
+        
+        if touchInstrCnt >= 256 or touchInstrCnt >= setting.forgedPerct * funcEndOffset:
+            logger.info(f'Found Fake Notification:: ' +\
+                f'action@{currentActionId}: execute too much instruction:{touchInstrCnt}:{touchInstrCnt / funcEndOffset}% code')
+            return 1
+
+        # keep going
+        return -1
+
 
     def findATKFakeNotif(self, attackerString, attackeeString):
         startPos, endPos, currentActionId, sensitiveFuncList = self.caseInfo
@@ -445,6 +824,12 @@ class FeedbackFactory(object):
         
         size = len(lines)
         startPos = 0
+        # locate apply()
+        # while startPos < size:
+        #     _ , _,  args, _ = lines[startPos]
+        #     if args[0] == self.applyFuncId:
+        #         break
+        #     startPos += 1
 
         while startPos < size:
             _ , instr , args, _ = lines[startPos]
@@ -474,17 +859,107 @@ class FeedbackFactory(object):
             startPos += 1
         return None
 
-    def hasFakeTransferBug(self):# never increase balance
-        startPos, endPos, currentActionId, _ = self.caseInfo
+    def hasFakeTransferBug(self, executedContractName):# never increase balance
+        _, _, currentActionId, _ = self.caseInfo
         print("[-] in hasFakeTransferBug()::", self.caseInfo, self.transferEntry)
         if currentActionId != self.transferEntry:
             return False # keep trying
         else:
+            print("[+] Executed EOSPONSER#", currentActionId)
+            # for item in self.firstActLog[-10:]:
+            # print(item)
+            _tmp = self.name2uint64(executedContractName)
+            argCode = [_tmp & 0xffffffff, _tmp >> 32]
+            argEosio = [880977408, 1429268995] 
+            argmisc = [1232182624, 1456830293]# everipediaiq
+            '''
+            https://bloks.io/account/everipediaiq
+            '''
+            #[880977408, 1429268995] #eosio.token
+            
+            idx = len(self.firstActLog)-1
+            while idx >= 0:
+                _ , instr , args, _  = self.firstActLog[idx]
+                if instr in ['i64.ne', 'i64.eq'] and args[2:6] in (argCode+argEosio, argEosio+argCode, argCode+argmisc, argmisc+argCode):
+                    print("+++++++++++++====GUADRD++++++++++++++++++++++=", instr, args)
+                    return False
+                idx -= 1
+            
             logger.info(f'Fake EOS. After passing the checks in the apply(), action:{currentActionId} was excuted')
             return True
 
+
+        '''
+        # callIndirectCount = 0
+
+        # for _, instr, args, _ in lines:
+        #     #apply() -> transfer()
+        #     if 'call_indirect' in instr:
+        #         currentActionId = args[0]
+        #         logger.info(f'Fake EOS. After passing the checks in the apply(), action:{currentActionId} was excuted')
+        #         return True
+        #         # print(instr)
+        #     #     callIndirectCount += 1  
+        #     # if callIndirectCount >= 1: #apply() -> transfer()
+        #     #     return True
+        # return False
+
+
+        currentActionId = -1
+        # only check the first action
+        with open(setting.plogPath, 'r') as f:
+            lines = json.load(f)[:self.logScope[0]]
+
+        # locate apply()
+        linePos = -1
+        for idx, item in enumerate(lines):
+            _, instr, args, _ = item
+            func = args[0]
+            if func == self.applyFuncId:
+                linePos = idx
+                break
+
+        if linePos == len(lines)-1 or linePos == -1:
+            return False
+        
+        # excuate a user's function(action)
+
+        ignoreFuncList = list()
+        for idx, item  in enumerate(lines[linePos+1:]):
+            _, instr, args, _ = item
+            func = args[0]
+            if func in ignoreFuncList:
+                continue
+            # if instr == 'call':
+            #     target = args[2]
+            if func > self.applyFuncId:
+                if instr == 'begin_function' and lines[linePos+1+idx+1][1] == 'return':
+                    ignoreFuncList.append(func)
+                    continue
+                currentActionId = func
+                logger.info(f'Fake EOS. After passing the checks in the apply(), action:{currentActionId} was excuted')
+                # print(lines[linePos+1+idx:linePos+idx+5])
+                # exit(0)
+                return True
+   
+        return False
+        '''
+
     def exploitDetector(self,basicblocks, kind, isExecuted, isVulBalance):
         # detect bug
+
+        # with open(setting.plogPath, 'r') as f:
+        #     lines = json.load(f)
+        # lineOfTaposFunction = -1
+        # for i, item in enumerate(lines):
+        #     _, instr, args, _ = item
+        #     if 6 == args[0]:
+        #         print(item)
+        #         if int(args[0]) == 6:
+        #             print("found", item)
+        # exit(0)
+        # return False
+
         self.invalidCount += 1
         if self.usedTaposFunctionThenEosioTokenTransfer():
             # success
@@ -500,6 +975,13 @@ class FeedbackFactory(object):
             if _magic == 1:
                 logger.info("Fake Notification")
                 return True
+                # results.add(true, successExit, "transfer", kind, ty.testArgument)
+                # logger.log("Has forged notification bug")
+                # logger.log("Check forged notification bug")
+            
+            # elif _magic == 0:
+            #     # results.add(false, successExit, "transfer", kind)
+            #     pass
 
         elif kind == 2 or kind == 3:
             if self.hasFakeTransferBug():
@@ -508,7 +990,12 @@ class FeedbackFactory(object):
                 # logger.log("Has fake transfer bug")
                 logger.info(f"Has fake transfer bug;Fake EOS kind={kind}")
                 return True
-
+            # pipe.exe = "cleos"
+            # pipe.args = "get currency balance eosio.token " + contractName + " EOS"
+            # pipe.execute()
+            # if(pipe.output.size() == 1) :
+            #     originBalance = eosio::chain::asset::from_string(pipe.output[0])
+            
         # compare currency
         # =========================== end bug detect =======================================
         return False
