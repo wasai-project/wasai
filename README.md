@@ -32,23 +32,20 @@ WebAssembly (Wasm) smart contracts have shown growing popularity across blockcha
 1.   set environment
 
 ```bash
-# python3.6.9
-# python3 -m venv ./
-# activate ./venv/bin/activate
-# python3 -m pip install -r requirements.txt
 docker build -t localhost/client-eos:wasai .
 docker run --rm -ti  localhost/client-eos:wasai
+```
+
+2. run example
+
+   Execute bin/fuzz.py to the result. `python -m bin.fuzz <wasmPath> <abiPath> <contractName> <timeout> <fuzzCnt> <saveResult>`
+
+```bash
 # in the container 
 python3 -m bin.fuzz ./examples/batdappboomx/batdappboomx.wasm ./examples/batdappboomx/batdappboomx.abi batdappboomx 300 300  ./rt/ --detect_vuls 020000
 ```
 
-2.   run example
-
-```bash
-python -m bin.fuzz <wasmPath> <abiPath> <contractName> <timeout> <fuzzCnt> <saveResult>
-```
-
-The result should be like:
+WASAI should report a Fake EOS vulnerablity.
 
 ```
 [+] Executed EOSPONSER# 68
@@ -65,10 +62,12 @@ The result should be like:
 }
 ```
 
-# Benchmark
+# More Benchmark
 
-`https://drive.google.com/file/d/1z1rd3o0o6zoYVNcKXpnHWqDLn4EwdcP-/view?usp=sharing` &&
-`https://github.com/gongbell/EOSFuzzer/tree/master/dataset/binaryContracts`
+```
+https://drive.google.com/file/d/1z1rd3o0o6zoYVNcKXpnHWqDLn4EwdcP-/view?usp=sharing` &&
+`https://github.com/gongbell/EOSFuzzer/tree/master/dataset/binaryContracts
+```
 
 # Authors
 
@@ -77,3 +76,4 @@ The result should be like:
 # License
 
 [License MIT](LICENSE)
+
