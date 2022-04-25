@@ -82,23 +82,13 @@ def initEosEnv():
     # init EOS environment & deploy contract
     os.system('killall nodeos')
     os.system('killall keosd')  
-    # while True:
-    #     os.system('killall nodeos')
-    #     os.system('killall keosd')
-    #     _, out1 = subprocess.getstatusoutput("ps -x|grep nodeos |grep -v grep| awk '{print $2}'| wc -l")
-    #     _, out2 = subprocess.getstatusoutput("ps -x|grep keosd |grep -v grep| awk '{print $2}' | wc -l")
-    #     # print(out1, out2)
-    #     # if out1 == '0' and out2 == '0':
-    #     break
 
-    os.system('keosd --max-body-size 100000000 &')
     os.system('rm -rf ' + setting.eosFilePath)
     os.system('rm ./nodeos.log')
     
-    # os.system('echo ' + setting.aPasswordToKeosd + ' | ' + setting.cleosExecutable + ' wallet unlock')
-
     os.system("rm -rf .local/share/eosio/ /root/eosio-wallet/")
 
+    os.system('keosd --max-body-size 100000000 &')
     os.system("cleos wallet create -f /root/passwd")
     os.system('cat ~/passwd | cleos wallet unlock')
     os.system("cleos wallet import --private-key 5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3")
