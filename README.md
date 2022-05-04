@@ -40,7 +40,7 @@ sudo docker run --rm -ti  localhost/client-eos:wasai # run a docker container
 
 2. run example
 
-   Execute bin/fuzz.py to the result. `python -m bin.fuzz <wasmPath> <abiPath> <contractName> <timeout> <fuzzCnt> <saveResult>`
+   Execute bin/fuzz.py to get the result. `python -m bin.fuzz <wasmPath> <abiPath> <contractName> <timeout> <fuzzCnt> <saveResult>`
 
 ```bash
 # in the docker container 
