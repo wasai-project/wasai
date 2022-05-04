@@ -26,14 +26,14 @@ WebAssembly (Wasm) smart contracts have shown growing popularity across blockcha
 | |-- setting.py
 | |-- utils.py
 ```
-
 ## Getting Started
 
 1.   set environment
 
 ```bash
-docker build -t localhost/client-eos:wasai .
-docker run --rm -ti  localhost/client-eos:wasai
+git clone https://github.com/wasai-project/wasai.git && cd wasai # download the code
+sudo docker build -t localhost/client-eos:wasai .
+sudo docker run --rm -ti  localhost/client-eos:wasai # run a docker container
 ```
 
 2. run example
@@ -41,7 +41,7 @@ docker run --rm -ti  localhost/client-eos:wasai
    Execute bin/fuzz.py to the result. `python -m bin.fuzz <wasmPath> <abiPath> <contractName> <timeout> <fuzzCnt> <saveResult>`
 
 ```bash
-# in the container 
+# in the docker container 
 python3 -m bin.fuzz ./examples/batdappboomx/batdappboomx.wasm ./examples/batdappboomx/batdappboomx.abi batdappboomx 300 300  ./rt/ --detect_vuls 020000
 ```
 
@@ -61,7 +61,6 @@ WASAI should report a Fake EOS vulnerablity.
     "logLifes": []
 }
 ```
-
 # More Benchmark
 
 ```
