@@ -30,6 +30,8 @@ WebAssembly (Wasm) smart contracts have shown growing popularity across blockcha
 
 1.   set environment
 
+WASAI should run well on a service with Ubuntu 18.04 or Ubuntu 20.04.
+Please download [Docker](https://docs.docker.com/get-docker/) first.
 ```bash
 git clone https://github.com/wasai-project/wasai.git && cd wasai # download the code
 sudo docker build -t localhost/client-eos:wasai .
