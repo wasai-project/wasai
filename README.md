@@ -1,6 +1,6 @@
 # WASAI
 
-<a href="https://conf.researchr.org/details/issta-2022/issta-2022-technical-papers/8/WASAI-Uncovering-Vulnerabilities-in-Wasm-Smart-Contracts"> <img align="right" width="200"  src="paper.png"> </a>
+<a href="https://conf.researchr.org/details/issta-2022/issta-2022-technical-papers/8/WASAI-Uncovering-Vulnerabilities-in-Wasm-Smart-Contracts"> <img align="right" width="210"  src="paper.png"> </a>
 
 WASAI is a concolic fuzzer for identifying vulnerabilities in Wasm smart contracts, taking EOSIO as the mainly Wasm favored blockchain. The fuzzer is based on our [paper](https://conf.researchr.org/details/issta-2022/issta-2022-technical-papers/8/WASAI-Uncovering-Vulnerabilities-in-Wasm-Smart-Contracts), [recording](TBD):
 
